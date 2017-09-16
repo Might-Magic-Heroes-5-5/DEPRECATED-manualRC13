@@ -1,4 +1,4 @@
-require 'code/Tooltip'
+require 'code/tooltip'
 
 def read_skills text, int = 0, first = nil, second = nil
 	skills = []
@@ -20,8 +20,8 @@ def read_skills text, int = 0, first = nil, second = nil
 end
 
 def set	(img, options={} )
-	img.hover { @hovers.open  text: options[:text], header: options[:header] , text2: options[:text2], width: options[:width], height: options[:height]; img.scale 1.25, 1.25 }
-	img.leave { @hovers.close; img.scale 0.8, 0.8 }
+	img.hover { @hovers.show text: options[:text], header: options[:header] , size: 9,  text2: options[:text2], width: options[:width], height: options[:height]; img.scale 1.25, 1.25 }
+	img.leave { @hovers.hide; img.scale 0.8, 0.8 }
 end
 
 def trim num
@@ -34,31 +34,28 @@ def set_button hero, count, direction = "up"
 	( hero > -1 && hero < count ) ? ( set_hero hero; set_skillwheel; ) : nil 
 end
 	
-Shoes.app(title: "Open Skillwheel v:0.90, database: HoMM 5.5 RC8b", width: 1000, height: 730, resizable: false ) do
-background 'pics/themes/background.jpg'
+Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC9b", width: 1000, height: 715, resizable: false ) do
 
-	font "vivaldi.ttf" unless Shoes::FONTS.include? "Vivaldi"
-	font "belmt.ttf" unless Shoes::FONTS.include? "Bell MT"
+	font "fonts/vivaldi.ttf" unless Shoes::FONTS.include? "Vivaldi"
+	font "fonts/belmt.ttf" unless Shoes::FONTS.include? "Bell MT"
 	style Shoes::Subtitle, font: "Vivaldi"
 	style Shoes::Tagline, font: "Bell MT", size: 16, align: "center"
 	@hovers = tooltip()
 	@table_stats = []
 	@offense, @defense, @mana_multiplier = 1, 1, 1
-	
-	def set_main page, object, dir
+
+	def set_main page, object, dir_img, dir_txt
 		@main_slot.each_with_index do |slot, i|
 			slot.clear do
-				object[i].nil? ? nil : ( set_slot page, object[i], ( image "pics/#{dir}/#{object[i]}.png", width: 50 ), text: File.read("text/#{dir}/#{object[i]}.txt") )
+				object[i].nil? ? nil : ( set_slot page, object[i], ( image "pics/#{dir_img}/#{object[i]}.png", width: 50 ), text: File.read("text/#{@LG}/#{dir_txt}/#{object[i]}/name.txt") )
 			end
 		end
 	end
 	
-	#def set_slot page, item, img, text=item,
 	def set_slot page, item, img, options={}
-		#text=]#, width: options[:width], height: options[:height]; img.scale 1.25, 1.25 }
 		set img, text: options[:text], header: options[:header] || nil, text2: options[:text2] || nil #, width: 100, height: 25
 		img.click do
-			@hovers.close
+			@hovers.hide
 			case page
 			when "TOWN" then town_pane_2 item
 			when "HERO" then set_classes item
@@ -66,6 +63,8 @@ background 'pics/themes/background.jpg'
 			when "CREATURE" then creature_pane_2_book item
 			when "SPELL" then spell_pane_pages item
 			when "CLASSES" then @ch_class = item; set_hero 0; set_skillwheel
+			when "LINK" then system("start #{item}")
+			when "ARTIFACT" then artifact_slot item
 			end
 		end
 	end
@@ -86,9 +85,9 @@ background 'pics/themes/background.jpg'
 		@wheel_turn = 0
 		ch_heroes = read_skills "design/classes/#{@ch_class}/heroes.txt"
 		@ch_primary = read_skills "design/classes/#{@ch_class}/primary.txt", 1
-		@ch_skills = read_skills "text/heroes/#{ch_heroes[hero]}/skills.txt"
+		@ch_skills = read_skills "text/#{@LG}/heroes/#{ch_heroes[hero]}/skills.txt"
 		@box_hero.clear { image "pics/heroes/#{ch_heroes[hero]}.png", width: 60 }
-		set @box_hero, text: ( (read_skills "text/heroes/#{ch_heroes[hero]}/spec.txt").join("\n") ), header: ( (read_skills "text/heroes/#{ch_heroes[hero]}/name.txt")[0] ), text2: (read_skills "text/heroes/#{ch_heroes[hero]}/Additional.txt")[0]
+		set @box_hero, text: ( (read_skills "text/#{@LG}/heroes/#{ch_heroes[hero]}/spec.txt").join("\n") ), header: ( (read_skills "text/#{@LG}/heroes/#{ch_heroes[hero]}/name.txt")[0] ), text2: ((read_skills "text/#{@LG}/heroes/#{ch_heroes[hero]}/additional.txt")[0])
 		@left_button.click { set_button hero, ch_heroes.length, "down" }.show
 		@right_button.click { set_button hero, ch_heroes.length }.show
 		set_level
@@ -98,7 +97,7 @@ background 'pics/themes/background.jpg'
 		@box_level.clear { subtitle "#{ch_level}", size: 20, font: "Vivaldi" }	
 		set_primary
 		@box_level.click do |press| ############# Hero leveling up and gaining of primary stats based on chance
-			@hovers.close
+			@hovers.hide
 			if press == 1 && ch_level<100 then
 				ch_level+=1
 				i = rand(1..100)
@@ -144,7 +143,7 @@ background 'pics/themes/background.jpg'
 	def set_box box, x, skill #####populate the current box with perk or skill
 		perks = read_skills "design/skilltree/#{skill}.txt"
 		box.map!(&:clear)
-		@ch_skills[x].each_char.with_index do |perk_value, y|
+		@ch_skills[x].each_char.with_index do |perk_value, y|	
 			box[y].append do
 				unless perks[y] == "" || perk_value == "2"
 					case perk_value
@@ -170,9 +169,9 @@ background 'pics/themes/background.jpg'
 						when "Intelligence" then @mana_multiplier = 14; set_primary
 						end
 					end
-					set contents[0], text: ( (read_skills "text/skills/#{perks[y]}/Description.txt")[0] ), header: ( (read_skills "text/skills/#{perks[y]}/name.txt")[0] ), text2: (read_skills "text/skills/#{perks[y]}/Additional.txt").join("\n")
+					set contents[0], text: ( (read_skills "text/#{@LG}/skills/#{perks[y]}/description.txt")[0] ), header: ( (read_skills "text/#{@LG}/skills/#{perks[y]}/name.txt")[0] ), text2: (read_skills "text/#{@LG}/skills/#{perks[y]}/additional.txt").join("\n")
 					contents[0].click do
-						@hovers.close
+						@hovers.hide
 						( perk_value == "0" or @ch_skills[x] == "11111111121" ) ? ( check_plus_dependency x, y ) : ( check_minus_dependency x, y )
 						set_box box, x, skill
 					end
@@ -246,13 +245,13 @@ background 'pics/themes/background.jpg'
 		return p
 	end
 
-	def hero_pane first, second, main
+	def hero_pane first=@primary_pane, second=@secondary_pane
 		@ch_primary = [0, 0, 0, 0 ]
 		@box = Array.new(12) { Array.new(12) }
-		set_main "HERO", FACTIONS, "factions"
-		
+		set_main "HERO", FACTIONS, "factions", "factions"
+		pane_text = read_skills "text/#{@LG}/panes/hero_pane/name.txt"
 		first.clear do
-			subtitle "Faction Classes", left: 43, top: 255
+			subtitle pane_text[0], left: 43, top: 255
 			@class_board = flow left: 39, top: 302, width: 220, height: 50 ############# CLASSES WINDOW
 			flow width: 220, left: 58, top: 365 do	 ############# PRIMARY STATS TABLE
 				table_image = [ "attack", "defense", "spellpower", "knowledge" ]
@@ -261,7 +260,7 @@ background 'pics/themes/background.jpg'
 						border("rgb(105, 105, 105)", strokewidth: 1)
 						case i
 						when 0..3 then
-						set_slot "HERO_PRIMARY", i, ( image "pics/misc/#{table_image[i]}.png", left: 1, top: 1),  text: File.read("text/misc/#{table_image[i]}.txt")
+						set_slot "HERO_PRIMARY", i, ( image "pics/misc/#{table_image[i]}.png", left: 1, top: 1, width: 43),  text: pane_text[1]
 						end
 					end
 				end
@@ -272,17 +271,17 @@ background 'pics/themes/background.jpg'
 				@stat_damage = para "", left: 65, top: 505, size: 11
 				@stat_defense = para "", left: 142, top: 505, size: 11
 				@stat_mana = para "", left: 218, top: 505, size: 11
-				subtitle "Hero level", left: 110, top: 545, size: 16
-				set ( @box_level = ( flow left: 209, top: 47, width: 40, height: 35) ), text: "Left click to level up!", width: 200, height: 30
-				set ( image "pics/misc/s_damage.png", left: 50, top: 10, width: 15 ), text: "3.33%*Attack*(1+offense_skill) damage boost"
-				set ( image "pics/misc/s_defense.png", left: 127, top: 10, width: 15 ), text: "3.33%*Defense*(1+defense_skill) health boost"
-				set ( image "pics/misc/s_mana.png", left: 203, top: 10, width: 15 ), text: "Hero Mana pool"
+				subtitle pane_text[2], left: 110, top: 545, size: 16
+				set ( @box_level = ( flow left: 209, top: 47, width: 40, height: 35) ), text: pane_text[3], width: 200, height: 30
+				set ( image "pics/misc/s_damage.png", left: 50, top: 10, width: 15 ), text: pane_text[4]
+				set ( image "pics/misc/s_defense.png", left: 127, top: 10, width: 15 ), text: pane_text[5]
+				set ( image "pics/misc/s_mana.png", left: 203, top: 10, width: 15 ), text: pane_text[6]
 			end
 		end
 
 		second.clear do
 			image 'pics/themes/wheel.png', width: 710, top: 5
-			c_width, c_height, step, start_rad = 674, 688, Math::PI/6, 0  ########### using math formula to define the circpostion of the boxes
+			c_width, c_height, step, start_rad = 674, 688, Math::PI/6, 0  ########### using math formula to define the circular postion of the skill nests
 			for q in 0..11
 				angle = -1.46 + (Math::PI/21)*(q%3)
 				q>1 ? ( ( ( q+1 )%3 ) == 1 ? start_rad += 50 : nil ) : nil
@@ -303,31 +302,34 @@ background 'pics/themes/background.jpg'
 		end
 	end
 
-	def creature_pane first, second, main
-		set_main "CREATURE", FACTIONS, "factions"
-		
+	def creature_pane first=@primary_pane, second=@secondary_pane
+		set_main "CREATURE", FACTIONS, "factions", "factions"
+		pane_text = read_skills "text/#{@LG}/panes/creature_pane/name.txt"
+
 		first.clear do
-			subtitle "Creature Stats", left: 45, width: 200, top: 255, font: "Vivaldi", align: "center"
-			@creature_name = para "", left: 5, top: 310, size: 12, align: "center"
-			flow left: 60, top: 300, width: 200, height: 230 do
-				@creature_stats = flow left: 20, top: 40, width: 180, height: 240;
-				set ( image "pics/misc/s_attack.png", left: 0, top: 45, width: 15 ), text: "Attack", width: 125, height: 25
-				set ( image "pics/misc/s_defense.png", left: 0, top: 65, width: 15 ), text: "Defense", width: 125, height: 25
-				set ( image "pics/misc/s_damage.png", left: 0, top: 85, width: 15 ), text: "Damage", width: 125, height: 25
-				set ( image "pics/misc/s_initiative.png", left: 0, top: 105, width: 15 ), text: "Initiative", width: 125, height: 25
-				set ( image "pics/misc/s_speed.png", left: 0, top: 125, width: 15 ), text: "Speed", width: 125, height: 25
-				set ( image "pics/misc/s_hitpoints.png", left: 0, top: 145, width: 15 ), text: "Hit Points", width: 125, height: 25
-				set ( image "pics/misc/s_mana.png", left: 0, top: 165, width: 15 ), text: "Mana pool", width: 125, height: 25
-				set ( image "pics/misc/s_shots.png", left: 0, top: 185, width: 15 ), text: "Shots", width: 125, height: 25
-				set ( image "pics/skills/active/recruitment.png", left: 0, top: 205, width: 18 ), text: "Weekly Growth", width: 125, height: 25
+			subtitle pane_text[0], top: 255, font: "Vivaldi", align: "center"
+			@creature_name = para "", left: 5, top: 300, size: 12, align: "center"
+			flow left: 60, top: 290, width: 200, height: 230 do
+				left = 10
+				image 'pics/themes/creature_spells.png', left: 54, top: 18, width: 200, height: 240
+				@creature_stats = flow left: left + 20, top: 40, width: 180, height: 250;
+				set ( image "pics/misc/s_attack.png", left: left, top: 45, width: 15 ), text: pane_text[1], width: 125, height: 25
+				set ( image "pics/misc/s_defense.png", left: left, top: 65, width: 15 ), text: pane_text[2], width: 125, height: 25
+				set ( image "pics/misc/s_damage.png", left: left, top: 85, width: 15 ), text: pane_text[3], width: 125, height: 25
+				set ( image "pics/misc/s_initiative.png", left: left, top: 105, width: 15 ), text: pane_text[4], width: 125, height: 25
+				set ( image "pics/misc/s_speed.png", left: left, top: 125, width: 15 ), text: pane_text[5], width: 125, height: 25
+				set ( image "pics/misc/s_hitpoints.png", left: left, top: 145, width: 15 ), text: pane_text[6], width: 125, height: 25
+				set ( image "pics/misc/s_mana.png", left: left, top: 165, width: 15 ), text: pane_text[7], width: 125, height: 25
+				set ( image "pics/misc/s_shots.png", left: left, top: 185, width: 15 ), text: pane_text[8], width: 125, height: 25
+				set ( image "pics/skills/active/recruitment.png", left: left, top: 205, width: 18 ), text: pane_text[9], width: 125, height: 25
 			end
-			subtitle "Tier level", left: 124, top: 545, size: 16
+			subtitle pane_text[10], left: 124, top: 555, size: 16
 		end
 
 		second.clear do
 			flow left: 30, top: 70, width: 370, height: 600 do
-				image "pics/themes/pane2.png", width: 1.0, height: 1.0
-				subtitle "Abilities:", top: 5, stroke: white, align: "center"
+				image 'pics/themes/pane2.png', width: 1.0, height: 1.0
+				subtitle pane_text[11], top: 5, stroke: white, align: "center"
 				@pane2 = flow left: 0, top: 45, width: 1.0, height: 0.9, scroll: true, scroll_top: 100
 			end
 			flow left: 430, top: 45, width: 300, height: 620 do
@@ -341,36 +343,46 @@ background 'pics/themes/background.jpg'
 				end
 			end
 		end
-		creature_pane_2_book "Neutral"
+		creature_pane_2_book
 	end
 
-	def creature_pane_2_book factions
-		@creatures = read_skills "design/creatures/#{factions}.txt"
-		@faction_name.replace factions
+	def creature_pane_2_book faction='neutral'
+		@creatures = read_skills "design/creatures/factions/#{faction}.txt"
+		@faction_name.replace File.read("text/#{@LG}/factions/#{faction}/name.txt")
 		@box.map!(&:clear)
-		@total_damage_min, @total_damage_max, @total_health, @total_initiative = 0, 0, 0, 0
 		@creatures.each_with_index do |x, y|
+			dir_xdb="design/creatures/creatures/#{x}.xdb"
 			@box[y].append do
 				set ( image "pics/creatures/#{x}.png", left: 1, width: 44 ), text: "#{x}", width: 170, height: 25
 				contents[0].click do
 					@creature_name.replace x
-					@creature_abilities = read_skills "text/creatures/#{x}.xdb", 0, "<Item>ABILITY_", "</Item>"
+					@creature_abilities = read_skills dir_xdb, 0, "<Item>ABILITY_", "</Item>"
+					@creature_spells = read_skills dir_xdb, 0, "<Spell>SPELL_", "</Spell>"
+					@creature_spell_mastery = read_skills dir_xdb, 0, "<Mastery>", "</Mastery>"
+					(read_skills dir_xdb, 0, "<Range>", "</Range>").include?('0') ? nil : @creature_abilities.unshift("SHOOTER")
+					(read_skills dir_xdb, 0, "<CombatSize>", "</CombatSize>").include?('2') ? @creature_abilities.unshift("LARGE_CREATURE") : nil
 					@creature_stats.clear do
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<AttackSkill>", "</AttackSkill>" ), left: 10, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<DefenceSkill>", "</DefenceSkill>" ), left: 10, top: 20, size: 11
-						para "#{(read_skills "text/creatures/#{x}.xdb", 0, "<MinDamage>", "</MinDamage>")[0]} - #{(read_skills "text/creatures/#{x}.xdb", 0, "<MaxDamage>", "</MaxDamage>")[0]}", left: 10, top: 40, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<Initiative>", "</Initiative>" ), left: 10, top: 60, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<Speed>", "</Speed>" ), left: 10, top: 80, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<Health>", "</Health>" ), left: 10, top: 100, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<SpellPoints>", "</SpellPoints>" ), left: 10, top: 120, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<Shots>", "</Shots>" ), left: 10, top: 140, size: 11
-						para ( read_skills "text/creatures/#{x}.xdb", 0, "<WeeklyGrowth>", "</WeeklyGrowth>" ), left: 10, top: 162, size: 11
-						para strong(read_skills "text/creatures/#{x}.xdb", 0, "<CreatureTier>", "</CreatureTier>"), left: 138, top: 215
+						para ( read_skills dir_xdb, 0, "<AttackSkill>", "</AttackSkill>" ), left: 10, size: 11
+						para ( read_skills dir_xdb, 0, "<DefenceSkill>", "</DefenceSkill>" ), left: 10, top: 20, size: 11
+						para "#{(read_skills dir_xdb, 0, "<MinDamage>", "</MinDamage>")[0]} - #{(read_skills dir_xdb, 0, "<MaxDamage>", "</MaxDamage>")[0]}", left: 10, top: 40, size: 11
+						para ( read_skills dir_xdb, 0, "<Initiative>", "</Initiative>" ), left: 10, top: 60, size: 11
+						para ( read_skills dir_xdb, 0, "<Speed>", "</Speed>" ), left: 10, top: 80, size: 11
+						para ( read_skills dir_xdb, 0, "<Health>", "</Health>" ), left: 10, top: 100, size: 11
+						para ( read_skills dir_xdb, 0, "<SpellPoints>", "</SpellPoints>" ), left: 10, top: 120, size: 11
+						para ( read_skills dir_xdb, 0, "<Shots>", "</Shots>" ), left: 10, top: 140, size: 11
+						para ( read_skills dir_xdb, 0, "<WeeklyGrowth>", "</WeeklyGrowth>" ), left: 10, top: 162, size: 11
+						para strong(read_skills dir_xdb, 0, "<CreatureTier>", "</CreatureTier>"), left: 128, top: 225
+						i=0
+						@creature_spells.each do |spell|
+							spell.include?("ABILITY") ? next : nil
+							set (image "pics/spells/#{spell.downcase}.png", left: 124 - 36*(i%2), top: 146 - 36*(i/2), width: 35), header: (read_skills "text/#{@LG}/spells/#{spell.downcase}/name.txt")[0], text: ( read_skills "text/#{@LG}/spells/#{spell.downcase}/long_description.txt" ).join("\n")
+							i+=1
+						end					
 					end
 					@pane2.clear do
 						@creature_abilities.each_with_index do |a, d|
-							para strong("#{File.read("text/creature_abilities/#{a}/name.txt")}"), stroke: white, size: 12, align: "center", margin_left: 20, margin_right: 20, margin_top: 25
-							para "#{File.read("text/creature_abilities/#{a}/description.txt")}", stroke: white, size: 9, justify: true, align: "center", margin_left: 20, margin_right: 20
+							para strong("#{File.read("text/#{@LG}/creature_abilities/#{a}/name.txt")}"), stroke: white, size: 12, align: "center", margin_left: 20, margin_right: 20, margin_top: 25
+							para "#{File.read("text/#{@LG}/creature_abilities/#{a}/description.txt")}", stroke: white, size: 9, justify: true, align: "center", margin_left: 20, margin_right: 20
 						end
 					end
 				end
@@ -378,20 +390,20 @@ background 'pics/themes/background.jpg'
 		end
 	end
 	
-	def spell_pane first, second, main
+	def spell_pane first=@primary_pane, second=@secondary_pane
 		@spell_mastery = 0
-		set_main "SPELL", ["Dark", "Light", "Destruction", "Summoning", "Adventure", "Runic", "Warcry" ], "guilds"
-		
+		set_main "SPELL", ["dark", "light", "destruction", "summoning", "adventure", "runic", "warcry" ], "guilds", "guilds"
+		pane_text = read_skills "text/#{@LG}/panes/spell_pane/name.txt"
 		first.clear do
-			subtitle "Spell effects", left: 40, width: 200, top: 255, font: "Vivaldi", align: "center"
-			subtitle "Spell level", left: 85, top: 294, size: 14;
+			subtitle pane_text[0], left: 40, width: 200, top: 255, font: "Vivaldi", align: "center"
+			subtitle pane_text[1], left: 85, top: 294, size: 14;
 			@spell_lvl = subtitle "", left: 180, top: 294, size: 14;
 			flow(left: 50, top: 320, width: 205, height: 130) { @spell_text = para "", align: "left", justify: true, size: 10 }
-			[ "None", "Basic", "Advanced", "Expert" ].each_with_index { |mastery, i| radio( left: 165, top: 455+i*20 ).click { @spell_mastery = i; spell_pane_effect };  para mastery, left: 195, top: 458+i*20, size: 10 }
-			subtitle "Mastery Level", left: 45, top: 448, size: 16
-			subtitle "Mana cost", left: 45, top: 500, size: 16
+			pane_text[2..5].each_with_index { |mastery, i| radio( left: 165, top: 455+i*20 ).click { @spell_mastery = i; spell_pane_effect };  para mastery, left: 195, top: 458+i*20, size: 10 }
+			subtitle pane_text[6], left: 45, top: 448, size: 16
+			subtitle pane_text[7], left: 45, top: 500, size: 16
 			@spell_mana = subtitle "", left: 130, top: 500, size: 16;
-			subtitle "Spellpower", left: 105, top: 545, size: 16
+			subtitle pane_text[8], left: 105, top: 545, size: 16
 			set ( @box_level = ( flow left: 209, top: 549, width: 40, height: 35 ) ), text: "Click to increase!", width: 200, height: 30
 		end
 		set_spellpower 1
@@ -407,11 +419,12 @@ background 'pics/themes/background.jpg'
 	end
 	
 	def spell_pane_pages school
-		spells = read_skills "design/spells/#{school}.txt"
+		spells = read_skills "design/spells/schools/#{school}.txt"
 		@box.map!(&:clear)
 		spells.each_with_index do |spell, i|
+		debug(spell)
 			@box[i].clear do
-				set ( image "pics/spells/#{spell}.png", width: 90 ), header: (read_skills "text/spells/#{spell}/name.txt")[0], text: ( read_skills "text/spells/#{spell}/Long_description.txt" ).join("\n")	, text2: ( read_skills "text/spells/#{spell}/Additional.txt").join("\n")			
+				set ( image "pics/spells/#{spell.downcase}.png", width: 90 ), header: (read_skills "text/#{@LG}/spells/#{spell}/name.txt")[0], text: ( read_skills "text/#{@LG}/spells/#{spell}/long_description.txt" ).join("\n"), text2: ( read_skills "text/#{@LG}/spells/#{spell}/additional.txt").join("\n")			
 				contents[0].click do
 					@spell_current = spell
 					spell_pane_effect spell
@@ -426,28 +439,27 @@ background 'pics/themes/background.jpg'
 			if spell.include? "Rune" then
 				resource_cost = ""
 				[ "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem" ].each_with_index do |resource, i|
-					cost = ( read_skills "text/spells/#{spell}/#{spell}.xdb", 1, "<#{resource}>", "</#{resource}>" )
+					cost = ( read_skills "design/spells/spells/#{spell}.xdb", 1, "<#{resource}>", "</#{resource}>" )
 					cost[0] > 0 ?  resource_cost << "#{cost[0]} #{resource} " : nil
 				end
 				text_sp_effect = "Casting cost is " + resource_cost
 			else
-				spell_effect = read_skills "text/spells/#{spell}/#{spell}.xdb", 2, "<Base>", "</Base>"
-				spell_increase = read_skills "text/spells/#{spell}/#{spell}.xdb", 2, "<PerPower>", "</PerPower>"
+				spell_effect = read_skills "design/spells/spells/#{spell}.xdb", 2, "<Base>", "</Base>"
+				spell_increase = read_skills "design/spells/spells/#{spell}.xdb", 2, "<PerPower>", "</PerPower>"
 				spell_effect[0].nil? ? nil : ( spell_effect[0] < 1 ? spell_effect.map { |cost| cost=cost*100 } : nil )
-				File.file?("text/spells/#{spell}/SpellBookPrediction.txt") == true ? ( text_sp_effect = File.read("text/spells/#{spell}/SpellBookPrediction.txt") ) : ( text_sp_effect = File.read("text/spells/UNIVERSAL PREDICTION/SpellBookPrediction.txt") )
+				File.file?("text/#{@LG}/spells/#{spell}/SpellBookPrediction.txt") == true ? ( text_sp_effect = File.read("text/#{@LG}/spells/#{spell}/spellbookprediction.txt") ) : ( text_sp_effect = File.read("text/#{@LG}/spells/universal prediction/spellbookprediction.txt") )
 				text_sp_effect.scan(Regexp.union(/<.*?>%/,/<.*?>/)).each { |match| desc_vars << match }
 				desc_vars.each_with_index do |var, i|
 					if var["%"] then
 						spell_effect[0+i*4] < 2 ? ( text_sp_effect.sub! var, "#{trim ((spell_effect[@spell_mastery+4*i]+spell_increase[@spell_mastery+4*i]*@spell_power)*100).round(2)}%" ) : ( text_sp_effect.sub! var, "#{trim (spell_effect[@spell_mastery+4*i]+spell_increase[@spell_mastery+4*i]*@spell_power).round(2)}%" )
 					else
-						#debug("#{text_sp_effect}")
 						text_sp_effect.sub! var, "#{trim (spell_effect[@spell_mastery+4*i]+spell_increase[@spell_mastery+4*i]*@spell_power).round(2)}"
 					end
 				end
 			end
 			@spell_text.replace "#{text_sp_effect}"
-			@spell_lvl.replace "#{(read_skills "text/spells/#{spell}/#{spell}.xdb", 0, "<Level>", "</Level>")[0]}"
-			@spell_mana.replace "#{(read_skills "text/spells/#{spell}/#{spell}.xdb", 0, "<TrainedCost>", "</TrainedCost>")[0]}"
+			@spell_lvl.replace "#{(read_skills "design/spells/spells/#{spell}.xdb", 0, "<Level>", "</Level>")[0]}"
+			@spell_mana.replace "#{(read_skills "design/spells/spells/#{spell}.xdb", 0, "<TrainedCost>", "</TrainedCost>")[0]}"
 		end
 	end
 	
@@ -455,7 +467,7 @@ background 'pics/themes/background.jpg'
 		@spell_power = power
 		@box_level.clear { subtitle "#{@spell_power}", size: 20, font: "Vivaldi" }	
 		@box_level.click do |press| ############# Adjusting spell efects
-			@hovers.close
+			@hovers.hide
 			case press
 			when 1 then @spell_power<100 ? @spell_power+=1 : nil
 			when 2 then @spell_power = 1;
@@ -466,161 +478,169 @@ background 'pics/themes/background.jpg'
 		end
 	end
 	
-	def town_pane first, second, main	
-		set_main "TOWN", FACTIONS, "factions"
+	def town_pane first=@primary_pane, second=@secondary_pane
+		set_main "HERO", FACTIONS, "factions", "factions"
+		pane_text = read_skills "text/#{@LG}/panes/town_pane/name1.txt"
+		pane_text2 = read_skills "text/#{@LG}/panes/town_pane/name2.txt"
+		dir_text = "text/#{@LG}/panes/town_pane/changes"
 		
 		first.clear do
-			subtitle "Town Info", align: "center", top: 255;
+			subtitle pane_text[0], left: 80, top: 255
+			para pane_text[1], left: 50, top: 321
+			lang_setings = read_skills "design/settings/language.txt"
+			box_text = ["English", "Polskie" ]
+			chosen = lang_setings.index(@LG)
+			list_box :items => box_text, left: 140, top: 320, width: 100 do |n|
+				case n.text
+				when box_text[0] then @LG = lang_setings[0]
+				when box_text[1] then @LG = lang_setings[1]
+				end
+				@app.clear
+				main_menu
+				town_pane
+			end
 		end
 		
 		second.clear do
 			flow left: 40, top: 60, width: 640, height: 600 do
 				image 'pics/themes/town.png', width: 1.0, height: 1.0
-				@name = subtitle "Select a Faction", top: 32, align: "center"
-				@pane_army = flow left: 37, top: 80, width: 0.5, height: 0.64
+				subtitle pane_text2[0], top: 32, align: "center"
+				stack left: 37, top: 80, width: 0.5, height: 0.64 do
+					subtitle pane_text2[1], align: "left", stroke: white
+					subtitle pane_text2[2], align: "left", stroke: white
+					subtitle pane_text2[3], align: "left", stroke: white
+					subtitle pane_text2[4], align: "left", stroke: white, left: 5
+					subtitle pane_text2[5], align: "left", stroke: white
+					subtitle pane_text2[6], align: "left", stroke: white
+				end
+				left, top, jump, move = 150, 86, 58, 50
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=28539", (image "pics/changes/buildings.png", left: left, top: top, width: 40), header: pane_text2[7], text: File.read("#{dir_text}/buildings.txt")
+				set (image "pics/changes/heroes.png", left: left + move, top: top, width: 40), header: pane_text2[8], text: File.read("#{dir_text}/heroes.txt")
+				set (image "pics/misc/attack.png", left: left, top: top + jump, width: 40), header: pane_text2[9], text: File.read("#{dir_text}/attack.txt")
+				set (image "pics/misc/knowledge.png", left: left + move, top: top + jump, width: 40), header: pane_text2[10], text: File.read("#{dir_text}/knowledge.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=41320", (image "pics/changes/arrangement.png", left: left + move*2, top: top + jump, width: 40), header: pane_text2[11], text: File.read("#{dir_text}/arrangement.txt")
+				set (image "pics/changes/necromancy.png", left: left + move*3, top: top + jump, width: 40), header: pane_text2[12], text: File.read("#{dir_text}/necromancy.txt")
+				set (image "pics/changes/gating.png", left: left + move*4, top: top + jump, width: 40), header: pane_text2[13], text: File.read("#{dir_text}/gating.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=41320", (image "pics/changes/spell_system.png", left: left, top: top + jump*2, width: 40), header: pane_text2[14], text: File.read("#{dir_text}/spell_system.txt")
+				set (image "pics/changes/occultism.png", left: left + move, top: top + jump*2, width: 40), header: pane_text2[15], text: File.read("#{dir_text}/occultism.txt")
+				set (image "pics/changes/movement.png", left: left + move*2, top: top + jump*3, width: 40), header: pane_text2[16], text: File.read("#{dir_text}/movement.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=41341", (image "pics/changes/generator.png", left: left + move*3, top: top + jump*3, width: 40), header: pane_text2[17], text: File.read("#{dir_text}/generator.txt")
+				set (image "pics/changes/sites.png", left: left + move*4, top: top + jump*3, width: 40), header: pane_text2[18], text: File.read("#{dir_text}/sites.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=41528", (image "pics/changes/artifacts.png", left: left + move*5, top: top + jump*3, width: 40), header: pane_text2[19], text: File.read("#{dir_text}/artifacts.txt")
+				set (image "pics/changes/bloodrage.png", left: left + move, top: top + jump*4, width: 40), header: pane_text2[20], text: File.read("#{dir_text}/bloodrage.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=43030", (image "pics/changes/manual.png", left: left + move*2, top: top + jump*4, width: 40), header: pane_text2[21], text: File.read("#{dir_text}/manual.txt")
+				set (image "pics/changes/textures.png", left: left + move*3, top: top + jump*4, width: 40), header: pane_text2[22], text: File.read("#{dir_text}/textures.txt")
+				set (image "pics/changes/atb.png", left: left + move*4, top: top + jump*4, width: 40), header: pane_text2[23], text: File.read("#{dir_text}/atb.txt")
+				set (image "pics/changes/8skills.png", left: left + move, top: top + jump*5, width: 40), header: pane_text2[24], text: File.read("#{dir_text}/8skills.txt")
+				set (image "pics/changes/townportal.png", left: left + move*2, top: top + jump*5, width: 40), header: pane_text2[25], text: File.read("#{dir_text}/townportal.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=39792", (image "pics/changes/pest.png", left: left + move*3, top: top + jump*5, width: 40), header: pane_text2[26], text: File.read("#{dir_text}/pest.txt")
+				set_slot "LINK", "http://heroescommunity.com/viewthread.php3?TID=41977", (image "pics/changes/governor.png", left: left + move*4, top: top + jump*5, width: 40), header: pane_text2[27], text: File.read("#{dir_text}/governor.txt")
+				set (image "pics/changes/levels.png", left: left + move*5, top: top + jump*5, width: 40), header: pane_text2[28], text: File.read("#{dir_text}/levels.txt")
+				set (image "pics/changes/ai.png", left: left + move*6, top: top + jump*5, width: 40), header: pane_text2[29], text: File.read("#{dir_text}/ai.txt")
 				@pane_magic = flow left: 0.56, top: 80, width: 0.38, height: 0.64
 			end
 		end
 	end
-	
-	def town_pane_2 factions
-		creatures = read_skills "design/creatures/#{factions}.txt"
-		total_damage_min, total_damage_max, total_health, total_initiative = 0, 0, 0, 0
-		schools = read_skills "design/guilds/#{factions}.txt"
-		space = ( @pane_magic.width - 50*schools.length )/( schools.length + 1 )
-		
-		@name.replace factions
-		@pane_magic.clear do
-			subtitle "Magic Affinity", top: 10, stroke: white, size: 18, align: "center"
-			@pane_magic.append do
-				schools.each_with_index do | s, i |
-					set (image "pics/guilds/#{s}.png", left: space + i*( 50 + space ), top: 60, width: 50), header: "#{s} magic", text: ( File.read("text/spells/schools/#{s}.txt") )
-				end
-			end
-		end
-		
-		creatures.each_with_index do |x, y|
-			attack = read_skills "text/creatures/#{x}.xdb", 1, "<AttackSkill>", "</AttackSkill>" 
-			defense = read_skills "text/creatures/#{x}.xdb", 1, "<DefenceSkill>", "</DefenceSkill>"
-			damage_min = read_skills "text/creatures/#{x}.xdb", 1, "<MinDamage>", "</MinDamage>"
-			damage_max = read_skills "text/creatures/#{x}.xdb", 1, "<MaxDamage>", "</MaxDamage>"
-			health = read_skills "text/creatures/#{x}.xdb", 1, "<Health>", "</Health>"
-			initiative = read_skills "text/creatures/#{x}.xdb", 1, "<Initiative>", "</Initiative>"
-			weekly_growth = read_skills "text/creatures/#{x}.xdb", 1, "<WeeklyGrowth>", "</WeeklyGrowth>"
-			total_damage_min+=weekly_growth[0]*(attack[0]*0.033+1)*damage_min[0]
-			total_damage_max+=weekly_growth[0]*(attack[0]*0.033+1)*damage_max[0]
-			total_health+=weekly_growth[0]*(defense[0]*0.033+1)*health[0]
-			total_initiative+=initiative[0]
-		end
-		
-		@pane_army.clear do
-			subtitle "Might Affinity", top: 10, stroke: white, size: 18, align: "center"
-			set ( image "pics/buttons/flag.png", left: 17, top: 22, width: 15, height: 15 ), header: "About formulas...", text: File.read("text/misc/faction_stats.txt")
-			image "pics/misc/all_damage.png", left: 35, top: 55, width: 110, height: 55
-			image "pics/misc/all_hitpoints.png", left: 35, top: 115, width: 110, height: 55
-			image "pics/misc/all_initiative.png", left: 240, top: 115, width: 35, height: 50 
-			para "#{total_damage_min.round(2)} - #{total_damage_max.round(2)}", left: 155, top: 67, size: 11, stroke: white
-			para total_health.round(2), left: 155, top: 127, size: 11, stroke: white
-			para (total_initiative.to_f/creatures.count).round(2), left: 90, top: 127, size: 11, stroke: white, align: "center"
-			subtitle "Heroes classes difficulty", top: 180, stroke: white, size: 18, align: "center"
-			set ( image "pics/buttons/flag.png", left: 17, top: 196, width: 15, height: 15 ), header: "About Difficulty...", text: File.read("text/misc/difficulty.txt")
-			para "easy	  normal		expert", left: 127, top: 230, stroke: white, size: 8
-			classes = read_skills "design/factions/#{factions}.txt"
-			difficulty = read_skills "design/town/#{factions}.txt", 1
-			debug("#{difficulty}")
-			classes.each_with_index do | path, i |
-				para "#{path}", left: 10, top: 237+20*i, stroke: white, size: 11
-				bar ( progress left: 130, top: 248+20*i, width: 150, height: 5 ), (difficulty[i].to_f/100)
-			end			
-		end
-	end
-	
-	def bar bar, dif
-		anim=every(0.025) do |count|
-			bar.fraction=count*(dif/(20-(15-0.75*count)))
-			count == 20 ? anim.stop : nil
-		end
-	end
-	
-	def artifact_pane first, second
-		slots = read_skills "design/artifacts/slots.txt"
-		
-		first.clear do
-			subtitle "Sort by artifact set or slot", left: 45, width: 200, top: 255, font: "Vivaldi", align: "center"
-			slots.each_with_index {|slot, i| set_artifacts slots, i, first }
-		end
-		
-		second.clear do						
-			flow left: 60, top: 108, width: 300, height: 300 do
+
+	def artifact_pane first=@primary_pane, second=@secondary_pane
+		set_main "ARTIFACT", [ "by_slot", "by_set", "by_rarity", "by_price","by_modifier" ] , "buttons", "panes/artifact_pane/buttons" 
+		first.clear { @sort_pane = flow }
+		second.clear do
+			flow left: 100, top: 108, width: 520, height: 500 do
 				image 'pics/themes/pane2.png', width: 1.0, height: 1.0
-				subtitle "Artifact list", top: 0, align: "center",  stroke: white
-				@artifact_list = flow left: 0.05 , top: 0.2, width: 1.0, height: 0.8
+				subtitle File.read("text/#{@LG}/panes/artifact_pane/name.txt"), top: 0, align: "center",  stroke: white
+				@artifact_list = flow left: 0.05 , top: 0.1, width: 0.95, height: 0.9;
 			end
 		end
 	end
 	
-	def set_artifacts slots, i, first
-		button File.read("text/slots/#{slots[i]}.txt"), left: 60+100*(i%2), top: 360 + 35*(i/2), width: 80 do
+	def artifact_slot sort
+		slots = read_skills "design/artifacts/filters/#{sort}.txt"
+		@sort_pane.clear do
+			slots.each_with_index {|slot, i| set_artifacts sort, slots, i }
+		end
+	end
+	
+	def set_artifacts sort, slots, i
+		button File.read("text/#{@LG}/panes/artifact_pane/buttons/#{sort}/#{slots[i]}.txt"), left: 60+100*(i%2), top: 320 + 35*(i/2), width: 90 do
 			@artifact_list.clear do
-				Dir.foreach('text/artifacts') do |artifact|
-					next if artifact == '.' or artifact == '..' 
-					if (read_skills "text/artifacts/#{artifact}/#{artifact}.xdb", 0, "<Slot>", "</Slot>")[0] == slots[i] then
-						list=@artifact_list.contents.count
-						@artifact_list.append{ set_slot "ARTIFACT_SLOT", artifact, ( image "pics/artifacts/#{artifact}.png", left: 0 + 55*(list%5), top: 5 + (list/5)*55, width: 50), text: (reqad_skills	ad_skills "text/artifacts/#{artifact}/Description.txt")[0], header: (read_skills "text/artifacts/#{artifact}/Name.txt")[0], text2: ((read_skills "text/artifacts/#{artifact}/Additional.txt")[0]) }
+				case sort
+				when "by_slot" then filter = "Slot"
+					Dir.foreach("text/#{@LG}/artifacts") do |artifact|
+						next if artifact == '.' or artifact == '..' 
+						(read_skills "design/artifacts/artifacts/#{artifact}.xdb", 0, "<#{filter}>", "</#{filter}>")[0] == slots[i]? (add_artifact artifact) : nil
+					end
+				when "by_price" then filter = "CostOfGold"
+					Dir.foreach("text/#{@LG}/artifacts") do |artifact|
+						next if artifact == '.' or artifact == '..' 
+						(read_skills "design/artifacts/artifacts/#{artifact}.xdb", 1, "<#{filter}>", "</#{filter}>")[0].between?( slots[i].to_i - 9999,slots[i].to_i)? (add_artifact artifact) : nil
+					end
+				when "by_rarity" then filter = "Type"
+					Dir.foreach("text/#{@LG}/artifacts") do |artifact|
+						next if artifact == '.' or artifact == '..'
+						(read_skills "design/artifacts/artifacts/#{artifact}.xdb", 0, "<#{filter}>", "</#{filter}>")[0] == slots[i]? (add_artifact artifact) : nil
+					end
+				when "by_modifier" then filter = "#{slots[i]}"
+					Dir.foreach("text/#{@LG}/artifacts") do |artifact|
+						next if artifact == '.' or artifact == '..'
+						(read_skills "design/artifacts/artifacts/#{artifact}.xdb", 0, "<#{filter}>", "</#{filter}>")[0] != "0"? (add_artifact artifact) : nil
+					end
+				when "by_set" then set_array=[]
+					set_array = read_skills "design/artifacts/sets/#{slots[i]}.txt"
+					Dir.foreach("text/#{@LG}/artifacts") do |artifact|
+						next if artifact == '.' or artifact == '..'
+						set_array.include?(artifact.upcase)? (add_artifact artifact) : nil
 					end
 				end
 			end
 		end
 	end
 	
-	def set_artifact_slot
-		
-				#end
-		#	case slot[0] 
-		#		when slots[0] then @slot_num=0
-		#		when slots[1] then @slot_num=1
-		#		when slots[2] then @slot_num=2
-		#		when slots[3] then @slot_num=4
-		#		when slots[4] then @slot_num=5
-		##		when slots[5] then @slot_num=6
-		#		when slots[6] then @slot_num=7
-		#		when slots[7] then @slot_num=8
-		#		when slots[8] then @slot_num=9
-		#		when slots[9] then @slot_num=10
-				#else debug("slot is #{slot} and item is #{item}")
-		#	end
+	def add_artifact artifact
+		list=@artifact_list.contents.count
+		@artifact_list.append{ set_slot "ARTIFACT_SLOT", artifact, ( image "pics/artifacts/#{artifact}.png", left: 0 + 60*(list%8), top: 5 + (list/8)*60, width: 50), text: (read_skills "text/#{@LG}/artifacts/#{artifact}/description.txt")[0], header: (read_skills "text/#{@LG}/artifacts/#{artifact}/name.txt")[0], text2: ((read_skills "text/#{@LG}/artifacts/#{artifact}/additional.txt")[0]) }				
 	end
 	
-	FACTIONS = read_skills "design/FACTIONS.txt"
-
-##################################################################################################################### MAIN STARTS HERE
-	stack width: 280 do
-		@main_slot = []
-		image 'pics/themes/factions_pane.png', left: 5, top: 74, width: 295, height: 170
-		image 'pics/themes/manuscript.png', left: 20, top: 250, width: 263
-		for i in 0..7 do
-			top = i/4*51; left = i*51 - 4*top
-			@main_slot[i]=flow( left: 51 + left, top: 110 + top, width: 50, height: 50 )
-		end
-		@primary_pane = stack width: 280; #################################### LEFT  - heroes stats and sheets
-	end
-	set ( ( image "pics/buttons/towns.png", left: 32, top: 25, width: 45, height: 45 ).click { town_pane @primary_pane, @secondary_pane, @main_slot } ), text: "Town Index"
-	set ( ( image "pics/buttons/heroes.png", left: 92, top: 25, width: 45, height: 45 ).click { hero_pane @primary_pane, @secondary_pane, @main_slot } ), text: "Hero Index"
-	set ( ( image "pics/buttons/creatures.png", left: 152, top: 25, width: 45, height: 45 ).click { creature_pane @primary_pane, @secondary_pane, @main_slot } ), text: "Creature Index"
-	set ( ( image "pics/buttons/spellbook.png", left: 212, top: 25, width: 45, height: 45 ).click { spell_pane @primary_pane, @secondary_pane, @main_slot } ), text: "Spell Index"
-	set ( ( image "pics/buttons/artifacts.png", left: 272, top: 25, width: 45, height: 45 ).click { artifact_pane @primary_pane, @secondary_pane } ), text: "Artifact Index"
-	
-	@secondary_pane = stack width: 715, height: 715;	###################### RIGHT - SKILLWHEEL TABLE
-	hero_pane @primary_pane, @secondary_pane, @main_slot
-	stack top: 665, left: 940, width: 50, height: 50 do
-		image "pics/themes/about.png"
-		set contents[0], text: "Credits"
-		contents[0].click do
-			@a.nil? ? nil : @a.close
-			@a=window(title: "About", width: 450, height: 150, resizable: false ) do
-				para "Open Skillwheel version 0.90 by dredknight (Jordan Kostov)\n\nDesign advisor: Marina Kostova\nTechnical advisor: Simeon Manolov", justify: true
-				button( "www.heroescommunity.com", left: 110, top: 100 ) { system("start http://heroescommunity.com/viewthread.php3?TID=42212") }
+	def main_menu
+		@app = flow do
+			background 'pics/themes/background.jpg'
+			menu = read_skills "text/#{@LG}/panes/main_menu.txt"
+			@main_slot = []
+			
+			stack width: 280 do
+				image 'pics/themes/factions_pane.png', left: 5, top: 74, width: 295, height: 170
+				image 'pics/themes/manuscript.png', left: 20, top: 250, width: 263
+				for i in 0..7 do
+					top = i/4*51; left = i*51 - 4*top
+					@main_slot[i]=flow( left: 51 + left, top: 110 + top, width: 50, height: 50 )
+				end
+				@primary_pane = stack width: 280; #################################### LEFT  - heroes stats and sheets
+			end
+			set ( ( image "pics/buttons/town_index.png", left: 32, top: 25, width: 45, height: 45 ).click { town_pane } ), text: menu[0]
+			set ( ( image "pics/buttons/hero_index.png", left: 92, top: 25, width: 45, height: 45 ).click { hero_pane } ), text: menu[1]
+			set ( ( image "pics/buttons/creature_index.png", left: 152, top: 25, width: 45, height: 45 ).click { creature_pane } ), text: menu[2]
+			set ( ( image "pics/buttons/spell_index.png", left: 212, top: 25, width: 45, height: 45 ).click { spell_pane } ), text: menu[3]
+			set ( ( image "pics/buttons/artifact_index.png", left: 272, top: 25, width: 45, height: 45 ).click { artifact_pane } ), text: menu[4]
+			
+			@secondary_pane = stack width: 715, height: 715;	###################### RIGHT - SKILLWHEEL TABLE
+			stack top: 665, left: 940, width: 50, height: 50 do
+				image "pics/themes/about.png"
+				set contents[0], text: "Credits"
+				contents[0].click do
+					@a.nil? ? nil : @a.close
+					@a=window(title: "About", width: 450, height: 200, resizable: false ) do
+					para File.read("text/#{owner.instance_variable_get(:@LG)}/panes/credits_pane/name.txt"), justify: true
+						button( "www.heroescommunity.com", left: 110, top: 150 ) { system("start http://heroescommunity.com/viewthread.php3?TID=42212") }
+					end
+				end
 			end
 		end
 	end
+	
+##################################################################################################################### MAIN STARTS HERE
+
+	FACTIONS = read_skills "design/factions.txt" #get faction trees
+	@LG = "en" # Define deafult app language english
+	main_menu  # define General app slots
+	hero_pane  # Launch one of the app functions
 end
