@@ -2,7 +2,7 @@ require 'sqlite3'
 require 'code/readskills'
 #FileUtils.rm "skillwheel1.db"
 Shoes.app do
-	db = SQLite3::Database.new "C:/Users/yordan.kostov/Downloads/skillwheel.db"
+	db = SQLite3::Database.new "skillwheel.db"
 #=begin
 	############ create table with faction list and native spells
 	db.execute <<-SQL
