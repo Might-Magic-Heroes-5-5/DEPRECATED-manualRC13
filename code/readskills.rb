@@ -2,11 +2,10 @@ def read_skills text, int = 0, first = nil, second = nil
 	skills = []
 	if File.file?(text) == true 
 		File.read(text).each_line do |line|
-			is=line.chop
 			if first.nil? or second.nil? then
-				skills << is
-			elsif (is[/#{first}(.*?)#{second}/m, 1]).nil? == false then
-				skills << (is)[/#{first}(.*?)#{second}/m, 1];
+				skills << line
+			elsif (line[/#{first}(.*?)#{second}/m, 1]).nil? == false then
+				skills << (line)[/#{first}(.*?)#{second}/m, 1];
 			end
 		end
 		case int
