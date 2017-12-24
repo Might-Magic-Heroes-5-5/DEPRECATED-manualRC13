@@ -4,6 +4,12 @@ require 'sqlite3'
 require 'yaml'
 require 'zip'
 
+class Array
+  def same_values?
+    self.uniq.length == 1
+  end
+end
+
 def set	(img, options={}, &block )
 	img.hover { @events[options[:event]] == true ? (@hovers.show text: options[:text], header: options[:header] , size: 9,  text2: options[:text2], width: options[:width], height: options[:height]; img.scale 1.25, 1.25) : nil }
 	img.leave { @events[options[:event]] == true ? (@hovers.hide; img.scale 0.8, 0.8) : nil }
@@ -22,7 +28,7 @@ end
 
 def reading f_name; begin return @texts.read(f_name) rescue nil end; end
 
-Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3", width: 1200, height: 800, resizable: true ) do
+Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3", width: 1200, height: 800, resizable: false ) do
 
 	###### defining system vars #####
 
@@ -39,6 +45,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	DB = SQLite3::Database.new "settings/skillwheel.db"
 	FACTIONS = DB.execute( "select name from factions where name!='TOWN_NO_TYPE';" )  #get faction list
 	MASTERIES = { MASTERY_BASIC: 1, MASTERY_ADVANCED: 2, MASTERY_EXPERT: 3 }
+	RESOURCE = [ "Gold", "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem"]
 	OFFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
 	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
 	@LG = "en" 										#deafult app language
@@ -46,8 +53,18 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	@offense, @defense, @mana_multiplier = 1, 1, 10     #skill multipliers - Offense, Defense, Intelligence
 	@wheel_turn = 0
 	
+	def set_resources price, x=0		
+		price.each do |key, value|
+			if value != 0 then
+				image "pics/resources/#{key}.png", left: 8+70*(x%3), top: 0 + 22*(x/3)
+				para value, left: 34+70*(x%3), top: 0 + 22*(x/3)
+				x+=1
+			end
+		end
+	end 
+	
 	def set_main page, object, dir_img, dir_txt
-		@main_slot.each_with_index do |slot, i|
+		@main_slot.contents.each_with_index do |slot, i|
 			slot.clear do
 				object[i].nil? ? nil : ( set_slot page, object[i][0], 
 											( image "pics/#{dir_img}/#{object[i][0]}.png", width: @icon_size ),
@@ -68,7 +85,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 				@wheel_turn = 0
 				set_hero 0
 				set_wheel
-			when "ARTIFACT" then artifact_slot item
+			when "ARTIFACT" then @artifact_list.clear; artifact_slot item; 
 			end
 		end
 	end
@@ -77,7 +94,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		classes = DB.execute( "select id from classes where faction = '#{item}' order by sequence ASC;" )
 		space = ( @class_board.width - @icon_size2*classes.length )/( classes.length + 1 )
 		@class_board.clear do
-			for i in 0..classes.length-1 do
+			classes.length.times do |i|
 				@class_board.append do
 					flow(top: 5, left: space + i*( @icon_size2 + space ), width: @icon_size2) do
 						set_slot "HERO", classes[i][0],
@@ -90,22 +107,34 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		end
 	end
 
-	def set_hero current, load0=nil, load1=nil, load2=nil, load3=nil, load4=nil
+	def set_hero current, load0=nil, load1=nil, load2=nil, load3=nil, load4=nil, load5=nil
 		class_heroes = DB.execute( "select id, atk, def, spp, knw from heroes where classes='#{@ch_class}' order by sequence ASC;" )
 		hero = load0 || class_heroes[current][0]
+		@hero_level = load5 || 1
 		hero_primary = DB.execute( "select atk, def, spp, knw from heroes where id = '#{hero}';" )[0]
 		skill_chance = DB.execute( "select atk_c, def_c, spp_c, knw_c from classes where id = '#{@ch_class}';")[0]
 		@ch_primary = load1 || (hero_primary + skill_chance)
 		@hero_secondary = load2 || DB.execute( "select skills from heroes where id = '#{hero}';" )[0][0].split(',')
 		@hero_mastery = load3 || DB.execute( "select masteries from heroes where id = '#{hero}';" )[0][0].split(',')
 		@hero_perks = load4 || DB.execute( "select perks from heroes where id = '#{hero}';" )[0][0].split(',')
+		hero_spells = DB.execute("select spells from heroes where id = '#{hero}';")[0][0].split(',')
+		@hero_spell_pane.clear do
+			hero_spells.each_with_index do |s, i|
+				set (image "pics/spells/#{s}.png", left: 5 + 40*(i%2), top: 3, width: 37),
+					header: (reading "spells/#{s}/name.txt"),
+					text: (reading "spells/#{s}/desc.txt"),
+					text2: (reading "spells/#{s}/additional.txt"),
+					event: "primary"
+			end
+		end
 		@save.clear do
-			button "Save", left: 0, top: 0, width: 81, height: 25 do
-				options = ['hero', 'ch_class', 'ch_primary', 'hero_secondary', 'hero_mastery', 'hero_perks' ]
-				user_data = [ hero, @ch_class, @ch_primary, @hero_secondary, @hero_mastery, @hero_perks ]
+			s_txt = reading("panes/hero_pane/save.txt").split
+			button s_txt[0], left: 0, top: 0, width: 81, height: 25 do
+				options = ['hero', 'ch_class', 'ch_primary', 'hero_secondary', 'hero_mastery', 'hero_perks', 'hero_level' ]
+				user_data = [ hero, @ch_class, @ch_primary, @hero_secondary, @hero_mastery, @hero_perks, @hero_level ]
 				data = Hash[options.map {|x| [x, ""]}]
 				user_data.each_with_index { |n, i| data[options[i]] = n; }
-				fl = file_exists "Enter save name"
+				fl = file_exists s_txt[1], s_txt[2]
 				fl.nil? ? nil : ( File.open("save/#{fl}", "w") { |f| f.write(data.to_yaml) } )
 			end
 		end
@@ -119,21 +148,21 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		set_level
 	end
 	
-	def file_exists question
-		s_file = ask(question)
+	def file_exists ask1, ask2
+		s_file = ask(ask1)
 		if File.file?("save/#{s_file}") then
-			confirm("Duplicate name. Do you want to overwrite?") ? nil : (return nil)
+			confirm(ask2) ? nil : (return nil)
 		end
 		return s_file
 	end
 
-	def set_level ch_level=1
-		@box_level.clear { subtitle "#{ch_level}", size: 20, font: "Vivaldi" }
+	def set_level
+		@box_level.clear { subtitle "#{@hero_level}", size: 20, font: "Vivaldi" }
 		set_primary
 		@box_level.click do |press| ############# Hero leveling up and gaining of primary stats based on chance
 			@hovers.hide
-			if press == 1 && ch_level<100 then
-				ch_level+=1
+			if press == 1 && @hero_level<100 then
+				@hero_level+=1
 				i = rand(1..100)
 				case i
 				when 1..@ch_primary[4] then @ch_primary[0]+=1
@@ -141,11 +170,8 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 				when (@ch_primary[4] + @ch_primary[5] + 1)..(@ch_primary[4] + @ch_primary[5] + @ch_primary[6]) then @ch_primary[2]+=1
 				when (@ch_primary[4] + @ch_primary[5] + @ch_primary[6] + 1)..100 then @ch_primary[3]+=1
 				end
-			else
-				ch_level = 1
-				@ch_primary = DB.execute( "select atk, def, spp, knw, atk_c, def_c, spp_c, knw_c from classes where name = '#{@ch_class}';" )[0]
 			end
-			set_level ch_level
+			set_level
 		end
 	end
 
@@ -178,7 +204,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		status = @hero_secondary.index(skill)
 		mastery = status.nil? ? 0 : MASTERIES[:"#{@hero_mastery[status]}"]
 		perks = DB.execute( "select name from skills where tree='#{skill}' and type='SKILLTYPE_STANDART_PERK' order by sequence ASC;" )
-		branch, branch_count = [], [ 0, 0, 0 ] 		###branch perks; number of active perks for each branch
+		branch, branch_count = [], [ 0, 0, 0 ] 		###skill branch; number of active perks
 		p_count = 0
 		perks.each_with_index do |b, i|
 			branch << (get_branch b[0])
@@ -319,46 +345,47 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		@ch_primary = [0, 0, 0, 0 ]
 		@box = Array.new(12) { Array.new(12) }
 		set_main "CLASSES", FACTIONS, "factions", "factions"
-		pane_text = (reading "panes/hero_pane/name.txt").split("\n")
+		pane_t1 = (reading "panes/hero_pane/name.txt").split("\n")
+		pane_t1.map! { |x| x=x[0..-2] }
 		first.clear do
-			subtitle pane_text[0], top: 10, align: "center"
-			@class_board = flow left: 39, top: 60, width: 280, height: @icon_size + 10 ############# CLASSES LAYOUT
-			flow width: 200, left: 90, top: 120 do	 ############# PRIMARY STATS TABLE
+			primary_t1 = flow do
+				@events["primary"] = true
 				table_image = [ "attack", "defense", "spellpower", "knowledge" ]
-				for i in 0..11 do
-					flow height: 47, width: 47 do
-						border("rgb(105, 105, 105)", strokewidth: 1)
-						case i
-						when 0..3 then
-						set_slot "PRIMARY", i, ( image "pics/misc/#{table_image[i]}.png", left: 1, top: 1, width: 45),  text: pane_text[1], event: "primary"
-						end
-					end
+				subtitle pane_t1[0], top: 10, align: "center"
+				@class_board = flow left: 39, top: 60, width: 280, height: @icon_size + 10 ############# CLASSES LAYOUT
+				flow width: 200, left: 90, top: 120 do	 ############# PRIMARY STATS TABLE
+					12.times { |i| flow(height: 47, width: 47) { border("rgb(105, 105, 105)", strokewidth: 1) } }
+					4.times { |i| contents[i].append { set_slot "PRIMARY", i, ( image "pics/misc/#{table_image[i]}.png", left: 1, top: 1, width: 45),  text: pane_t1[1], event: "primary" }	}
+					@hero_st = flow left: 0, top: 48, width: 180, height: 45
+					@hero_ch = flow left: 0, top: 93, width: 180, height: 45
 				end
-				@hero_st = flow left: 0, top: 48, width: 180, height: 45
-				@hero_ch = flow left: 0, top: 93, width: 180, height: 45
-			end
-			flow do
-				@stat_damage = para "", left: 100, top: 270, size: 12
-				@stat_defense = para "", left: 187, top: 270, size: 12
-				@stat_mana = para "", left: 273, top: 270, size: 12
-				subtitle pane_text[2], left: 120, top: 363, size: 20
-				set ( @box_level = ( flow left: 263, top: 108, width: 40, height: 35) ), text: pane_text[3], event: "primary"
-				set ( image "pics/misc/s_damage.png", left: 80, top: 11, width: @icon_size/3 ), text: pane_text[4], width: 500, height: 40, event: "primary"
-				set ( image "pics/misc/s_defense.png", left: 167, top: 11, width: @icon_size/3 ), text: pane_text[5], width: 500, height: 40, event: "primary"
-				set ( image "pics/misc/s_mana.png", left: 253, top: 11, width: @icon_size/3 ), text: pane_text[6], width: 250, height: 40, event: "primary"
-				button "Load hero preset", left: 102, top: 60, height: 25 do
-					first.clear do
-						flow width: 1.0, height: 0.9 do
-							subtitle "Choose a preset", align: "center", top: 10
-							@qwe = stack left: 80, top: 57, width: 252, height: 330, scroll: true  do
-								Dir.glob("save/**/*").reject{ |rj| File.directory?(rj) }.each_with_index do |s, i|
-									flow do
-										check { load_hero s } 
-										para "#{i+1}. #{s.split('/')[1]}"
+				flow do
+					@stat_damage = para "", left: 100, top: 270, size: 12
+					@stat_defense = para "", left: 187, top: 270, size: 12
+					@stat_mana = para "", left: 273, top: 270, size: 12
+					subtitle pane_t1[2], left: 120, top: 365, size: 22
+					set ( @box_level = ( flow left: 263, top: 108, width: 40, height: 35) ), text: pane_t1[3], event: "primary"
+					set ( image "pics/misc/s_damage.png", left: 80, top: 11, width: @icon_size/3 ), text: pane_t1[4], width: 500, height: 40, event: "primary"
+					set ( image "pics/misc/s_defense.png", left: 167, top: 11, width: @icon_size/3 ), text: pane_t1[5], width: 500, height: 40, event: "primary"
+					set ( image "pics/misc/s_mana.png", left: 253, top: 11, width: @icon_size/3 ), text: pane_t1[6], width: 250, height: 40, event: "primary"
+					subtitle pane_t1[7], left: 60, top: 305, size: 22
+					@hero_spell_pane = flow left: 140, top: 44, height: 44, width: 170;
+					button pane_t1[8], left: 130, top: 145, height: 20 do
+						primary_t1.hide
+						first.append do
+							primary_t2 = flow width: 1.0, height: 0.9 do
+								subtitle pane_t1[9], align: "center", top: 10
+								q = stack left: 80, top: 57, width: 252, height: 330, scroll: true  do
+									Dir.glob("save/**/*").reject{ |rj| File.directory?(rj) }.each_with_index do |s, i|
+										flow do
+											check { load_hero s } 
+											para "#{i+1}. #{s.split('/')[1]}"
+										end
 									end
 								end
+								start { q.scroll_top = 1 } ## this line fixes Framework bug
+								button(pane_t1[10], left: 145, top: 405, height: 20) { primary_t2.remove; primary_t1.show }
 							end
-							start { @qwe.scroll_top = 1 }
 						end
 					end
 				end
@@ -366,17 +393,13 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		end
 
 		second.clear do
-			case @shoe
-			when 1 then image 'pics/themes/wheel.png', left: 5, top: 2, width: 785; c_width, c_height, step, start_rad, begin_rad, start_rad_up = 796, 800, Math::PI/6, 0, 362, 58
-			when 2 then	image 'pics/themes/wheel.png', left: 5, top: 35, width: 918; c_width, c_height, step, start_rad, begin_rad, start_rad_up = 880, 950, Math::PI/6, 0, 425, 68
-			end
+			image 'pics/themes/wheel.png', left: 5, top: 2, width: 785; c_width, c_height, step, start_rad, begin_rad, start_rad_up = 796, 800, Math::PI/6, 0, 362, 58
 			@wheel_left = image "pics/buttons/wheel_arrow.png", left: 350, top: 280 do end.hide.rotate 180
 			@wheel_right = image "pics/buttons/wheel_arrow.png", left: 420, top: 280 do end.hide
 			@box_hero = flow left: 355, top: 355, width: 80, height: 80
 			@save = flow left: 355, top: 440, width: 82, height: 30
 			@left_button = image "pics/buttons/normal.png", left: 325, top: 357, width: 25, height: 80 do end.hide.rotate 180
 			@right_button = image "pics/buttons/normal.png", left: 440, top: 357, width: 25, height: 80 do end.hide
-
 			for q in 0..11
 				angle = -1.46 + (Math::PI/21)*(q%3)
 				q>1 ? ( ( ( q+1 )%3 ) == 1 ? start_rad += start_rad_up : nil ) : nil
@@ -396,39 +419,40 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		opts = YAML.load_file(hero)
 		@ch_class = opts['ch_class']
 		hero_pane
-		set_hero 0, opts['hero'], opts['ch_primary'], opts['hero_secondary'], opts['hero_mastery'], opts['hero_perks']
+		set_hero 0, opts['hero'], opts['ch_primary'], opts['hero_secondary'], opts['hero_mastery'], opts['hero_perks'], opts['hero_level']
 		set_wheel
 	end
 
 	def creature_pane first=@primary_pane, second=@secondary_pane
 		set_main "CREATURE", FACTIONS, "factions", "factions"
-		pane_text = (reading "panes/creature_pane/name.txt").split("\n")
+		pane_t1 = (reading "panes/creature_pane/name.txt").split("\n")
 		first.clear do
-			subtitle pane_text[0], top: 10, font: "Vivaldi", align: "center"
+			@events["primary"] = true
+			subtitle pane_t1[0], top: 10, font: "Vivaldi", align: "center"
 			@creature_name = para "", left: 5, top: 50, size: 20, align: "center", font: "Vivaldi"
 			flow left: 70, top: 50, width: 250, height: 300 do
-				left = 10
+				left, top = 10
 				image 'pics/themes/creature_spells.png', left: 65, top: 25, width: 240, height: 260
 				@creature_stats = flow left: left + 20, top: 40, width: 240, height: 340, event: "primary"
-				set ( image "pics/misc/s_attack.png", left: left, top: 45, width: 18 ), text: pane_text[1], event: "primary"
-				set ( image "pics/misc/s_defense.png", left: left, top: 68, width: 18 ), text: pane_text[2], event: "primary"
-				set ( image "pics/misc/s_damage.png", left: left, top: 91, width: 18 ), text: pane_text[3], event: "primary"
-				set ( image "pics/misc/s_initiative.png", left: left, top: 114, width: 18 ), text: pane_text[4], event: "primary"
-				set ( image "pics/misc/s_speed.png", left: left, top: 137, width: 18 ), text: pane_text[5], event: "primary"
-				set ( image "pics/misc/s_hitpoints.png", left: left, top: 160, width: 18 ), text: pane_text[6], event: "primary"
-				set ( image "pics/misc/s_mana.png", left: left, top: 183, width: 18 ), text: pane_text[7], event: "primary"
-				set ( image "pics/misc/s_shots.png", left: left, top: 206, width: 18 ), text: pane_text[8], event: "primary"
-				set ( image "pics/skills/active/hero_skill_recruitment.png", left: left, top: 229, width: 21 ), text: pane_text[9], event: "primary"
+				set ( image "pics/misc/s_attack.png", left: left, top: 45, width: 18 ), text: pane_t1[1], event: "primary"
+				set ( image "pics/misc/s_defense.png", left: left, top: 68, width: 18 ), text: pane_t1[2], event: "primary"
+				set ( image "pics/misc/s_damage.png", left: left, top: 91, width: 18 ), text: pane_t1[3], event: "primary"
+				set ( image "pics/misc/s_initiative.png", left: left, top: 114, width: 18 ), text: pane_t1[4], event: "primary"
+				set ( image "pics/misc/s_speed.png", left: left, top: 137, width: 18 ), text: pane_t1[5], event: "primary"
+				set ( image "pics/misc/s_hitpoints.png", left: left, top: 160, width: 18 ), text: pane_t1[6], event: "primary"
+				set ( image "pics/misc/s_mana.png", left: left, top: 183, width: 18 ), text: pane_t1[7], event: "primary"
+				set ( image "pics/misc/s_shots.png", left: left, top: 206, width: 18 ), text: pane_t1[8], event: "primary"
+				set ( image "pics/skills/active/hero_skill_recruitment.png", left: left, top: 229, width: 21 ), text: pane_t1[9], event: "primary"
 			end
-			subtitle "Cost", top: 300, size: 22, align: "center"
+			subtitle pane_t1[10], top: 300, size: 22, align: "center"
 			@cost_slot = flow left: 70, top: 340, width: 150, height: 30;
-			subtitle pane_text[10], left: 134, top: 365, size: 22
+			subtitle pane_t1[11], left: 134, top: 365, size: 22
 		end
 
 		second.clear do
 			flow left: 30, top: 70, width: 438, height: 660 do
 				image 'pics/themes/pane2.png', width: 1.0, height: 1.0
-				subtitle pane_text[11], top: 5, stroke: white, align: "center", size: 30
+				subtitle pane_t1[12], top: 5, stroke: white, align: "center", size: 30
 				@pane2 = flow left: 0, top: 35, width: 1.0, height: 0.9, scroll: true, scroll_top: 100
 			end
 			flow left: 500, top: 45, width: 350, height: 690 do
@@ -446,18 +470,17 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	end
 
 	def creature_pane_2_book faction='TOWN_NO_TYPE'
-		@creatures = DB.execute( "select * from creatures where faction = '#{faction}' order by sequence ASC;" )
+		creatures = DB.execute( "select * from creatures where faction = '#{faction}' order by sequence ASC;" )
 		@faction_name.replace reading "factions/#{faction}/name.txt"
 		@box.map!(&:clear)
-		@creatures.each_with_index do |x, y|
+		creatures.each_with_index do |x, y|
 			@box[y].append do
 				set image("pics/creatures/#{x[0]}.png", left: 1, width: 50), text: reading("creatures/#{x[0]}/name.txt"), event: "secondary" do
 					@creature_name.replace reading "creatures/#{x[0]}/name.txt"
-					@creature_abilities = x[16].split(",")
-					@creature_spells = x[10].split(",")
-					a = [ "Gold", "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem"]
-					@creature_price = Hash[a.zip x[17..-1]]
-					#@creature_spell_mastery = read_skills dir_xdb, 0, "<Mastery>", "</Mastery>"
+					creature_abilities = x[16].split(",")
+					creature_spells = x[10].split(",")
+					creature_price = Hash[RESOURCE.zip x[17..-1]]
+					#creature_spell_mastery = read_skills dir_xdb, 0, "<Mastery>", "</Mastery>"
 					@creature_stats.clear do
 						para x[1], left: 10, top: 3, size: 13
 						para x[2], left: 10, top: 24, size: 13
@@ -470,7 +493,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 						para x[15], left: 10, top: 187, size: 13
 						subtitle x[13], left: 164, top: 273
 						i=0
-						@creature_spells.each do |spell|
+						creature_spells.each do |spell|
 							if spell.include?("ABILITY") then
 								next
 							else
@@ -482,19 +505,10 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 							end
 							i+=1
 						end
-						i_t = 0
-						@cost_slot.clear do
-							@creature_price.each do |key, value|
-								if value != 0 then	
-									image "pics/resources/#{key}.png", left: 8+i_t*70
-									para value, left: 34+i_t*70
-									i_t+=1
-								end
-							end
-						end
+						@cost_slot.clear { set_resources creature_price }
 					end
 					@pane2.clear do
-						@creature_abilities.each_with_index do |a, d|
+						creature_abilities.each_with_index do |a, d|
 							para strong("#{(reading "abilities/#{a}/name.txt")}"), stroke: white, size: 14, align: "center", margin_left: 20, margin_right: 20, margin_top: 35
 							para (reading "abilities/#{a}/desc.txt"), stroke: white, size: 12, justify: true, align: "center", margin_left: 20, margin_right: 20
 						end
@@ -505,33 +519,34 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	end
 	
 	def spell_pane first=@primary_pane, second=@secondary_pane
-		@spell_mastery = 0
+		@spell_mastery, @spell_power = 0, 1
 		schools = DB.execute("select id from guilds")
 		set_main "SPELL", schools, "guilds", "guilds"
-		pane_text = (reading "panes/spell_pane/name.txt").split("\n")
+		pane_t1 = (reading "panes/spell_pane/name.txt").split("\n")
 		first.clear do
-			subtitle pane_text[0], top: 10, align: "center"
-			subtitle pane_text[1], top: 55, size: 18, align: "center"
+			@events["primary"] = true
+			subtitle pane_t1[0], top: 10, align: "center"
+			subtitle pane_t1[1], top: 55, size: 18, align: "center"
 			@spell_lvl = subtitle "", left: 222, top: 56, size: 18;
 			flow(left: 55, top: 95, width: 260, height: 150) { @spell_text = para "", align: "left", justify: true, size: 12 }
-			pane_text[2..5].each_with_index do |mastery, i| 
+			pane_t1[2..5].each_with_index do |mastery, i| 
 				radio( left: 185, top: 250+i*20 ).click { @spell_mastery = i; spell_pane_effect };  
 				para mastery, left: 215, top: 251+i*20, size: 12
 			end
-			subtitle pane_text[6], left: 45, top: 243, size: 18
-			subtitle pane_text[7], left: 80, top: 333, size: 18
+			subtitle pane_t1[6], left: 45, top: 243, size: 18
+			subtitle pane_t1[7], left: 80, top: 333, size: 18
 			@spell_mana = subtitle "", left: 177, top: 334, size: 18
-			subtitle pane_text[8], left: 120, top: 368, size: 22
-			set ( @box_level = ( flow left: 257, top: 368, width: 50, height: 45 ) ),text: "Click to increase!", width: 200, height: 30, event: "primary"
+			subtitle pane_t1[8], left: 120, top: 365, size: 22
+			set ( @box_level = flow(left: 257, top: 368, width: 50, height: 45 ) { subtitle "#{@spell_power}",left: 5, top: -2, size: 26, font: "Vivaldi" } ),
+			text: pane_t1[9], width: 300, height: 60,
+			event: "primary"
 		end
-		set_spellpower 1
+		set_power
 
 		second.clear do
 			flow left: 95, top: 130, width: 640, height: 540 do
 				image 'pics/themes/spellbook.jpg', width: 1.0, height: 1.0
-				for q in 0..15 do
-					@box[q] = flow left: 60 + 125*(q%2) + 305*(q/8), top: 40 + 125*(q/2) - 500*(q/8), width: 90; 
-				end
+				16.times { |q| @box[q] = flow left: 60 + 125*(q%2) + 305*(q/8), top: 40 + 125*(q/2) - 500*(q/8), width: 90 }
 			end
 		end
 	end
@@ -595,7 +610,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 				desc_vars.each_with_index do |var, i|
 					b = spell_effect[@spell_mastery+4*i]
 					s = spell_increase[@spell_mastery+4*i]
-					text_sp_effect.sub! var, "#{trim (b+s*@spell_power).round(2)}"			
+					text_sp_effect.sub! var, "#{trim (b+s*@spell_power).round(2)}"
 				end
 			end
 			
@@ -605,9 +620,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		end
 	end
 
-	def set_spellpower power
-		@spell_power = power
-		@box_level.clear { subtitle "#{@spell_power}",left: 10, top: 3, size: 20, font: "Vivaldi" }
+	def set_power
 		@box_level.click do |press| ############# Adjusting spell efects
 			@hovers.hide
 			case press
@@ -615,22 +628,23 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			when 2 then @spell_power = 1
 			when 3 then @spell_power>1 ? @spell_power-=1 : nil
 			end
-			set_spellpower @spell_power
+			@box_level.clear { subtitle "#{@spell_power}",left: 10, top: 3, size: 20, font: "Vivaldi" }
 			spell_pane_effect
 		end
 	end
 
 	def town_pane first=@primary_pane, second=@secondary_pane
 		set_main "CLASSES", FACTIONS, "factions", "factions"
-		pane_text = reading("panes/town_pane/name1.txt").split("\n")
-		pane_text2 = reading("panes/town_pane/name2.txt").split("\n")
-		pane_text2.map!{|x| x=x[0..-2]}
+		pane_t1 = reading("panes/town_pane/name1.txt").split("\n")
+		pane_t2 = reading("panes/town_pane/name2.txt").split("\n")
+		pane_t2.map!{|x| x=x[0..-2]}
 		t_dir = "panes/town_pane/changes"
 
 		first.clear do
+			@events["primary"] = true
 			@lg_list = []
-			subtitle pane_text[0], top: 10, align: "center"
-			para pane_text[1], left: 60, top: 65, size: 12
+			subtitle pane_t1[0], top: 10, align: "center"
+			para pane_t1[1], left: 60, top: 65, size: 12
 			Dir.glob("text/**/*.pak").reject{ |rj| File.directory?(rj) }.each do |p|
 				@lg_list << p.split('/')[1].split('.')[0]
 			end
@@ -645,34 +659,35 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		second.clear do
 			flow left: 50, top: 60, width: 730, height: 700 do
 				image 'pics/themes/town.png', width: 1.0, height: 1.0
-				subtitle pane_text2[0], top: 42, align: "center"
+				subtitle pane_t2[0], top: 42, align: "center"
 				stack left: 50, top: 110, width: 0.5, height: 0.64 do
-					pane_text2[1..5].each { |p| subtitle p, align:  "left", stroke: white }
+					pane_t2[1..5].each { |p| subtitle p, align:  "left", stroke: white }
 				end
 				left, top, jump, move = 160, 118, 58, 50
-				set( (image "pics/changes/buildings.png", left: left, top: top, width: @icon_size2), header: pane_text2[6], text: reading("#{t_dir}/buildings.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-release-notes-rc10-beta-3" }
-				set (image "pics/changes/heroes.png", left: left + move, top: top, width: @icon_size2), header: pane_text2[7], text: reading("#{t_dir}/heroes.txt"), event: "secondary"
-				set (image "pics/misc/attack.png", left: left, top: top + jump, width: @icon_size2), header: pane_text2[8], text: reading("#{t_dir}/attack.txt"), event: "secondary"
-				set (image "pics/misc/knowledge.png", left: left + move, top: top + jump, width: @icon_size2), header: pane_text2[9], text: reading("#{t_dir}/knowledge.txt"), event: "secondary"
-				set( (image "pics/changes/arrangement.png", left: left + move*2, top: top + jump, width: @icon_size2), header: pane_text2[10], text: reading("#{t_dir}/arrangement.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
-				set (image "pics/changes/necromancy.png", left: left + move*3, top: top + jump, width: @icon_size2), header: pane_text2[11], text: reading("#{t_dir}/necromancy.txt"), event: "secondary"
-				set (image "pics/changes/gating.png", left: left + move*4, top: top + jump, width: @icon_size2), header: pane_text2[12], text: reading("#{t_dir}/gating.txt"), event: "secondary"
-				set( (image "pics/changes/spell_system.png", left: left + move*5, top: top + jump, width: @icon_size2), header: pane_text2[13], text: reading("#{t_dir}/spell_system.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
-				set (image "pics/changes/occultism.png", left: left + move*6, top: top + jump, width: @icon_size2), header: pane_text2[14], text: reading("#{t_dir}/occultism.txt"), event: "secondary"
-				set (image "pics/changes/movement.png", left: left + move*2, top: top + jump*2, width: @icon_size2), header: pane_text2[15], text: reading("#{t_dir}/movement.txt"), event: "secondary"
-				set( (image "pics/changes/generator.png", left: left + move*3, top: top + jump*2, width: @icon_size2), header: pane_text2[16], text: reading("#{t_dir}/generator.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41341" }
-				set (image "pics/changes/sites.png", left: left + move*4, top: top + jump*2, width: @icon_size2), header: pane_text2[17], text: reading("#{t_dir}/sites.txt"), event: "secondary"
-				set( (image "pics/changes/artifacts.png", left: left + move*5, top: top + jump*2, width: @icon_size2), header: pane_text2[18], text: reading("#{t_dir}/artifacts.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41528" }
-				set (image "pics/changes/bloodrage.png", left: left + move, top: top + jump*3, width: @icon_size2), header: pane_text2[19], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
-				set( (image "pics/changes/manual.png", left: left + move*2, top: top + jump*3, width: @icon_size2), header: pane_text2[20], text: reading("#{t_dir}/manual.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=43030" }
-				set (image "pics/changes/textures.png", left: left + move*3, top: top + jump*3, width: @icon_size2), header: pane_text2[21], text: reading("#{t_dir}/textures.txt"), event: "secondary"
-				set (image "pics/changes/atb.png", left: left + move*4, top: top + jump*3, width: @icon_size2), header: pane_text2[22], text: reading("#{t_dir}/atb.txt"), event: "secondary"
-				set (image "pics/changes/8skills.png", left: left + move, top: top + jump*4, width: @icon_size2), header: pane_text2[23], text: reading("#{t_dir}/8skills.txt"), event: "secondary"
-				set (image "pics/changes/townportal.png", left: left + move*2, top: top + jump*4, width: @icon_size2), header: pane_text2[24], text: reading("#{t_dir}/townportal.txt"), event: "secondary"
-				set( (image "pics/changes/pest.png", left: left + move*3, top: top + jump*4, width: @icon_size2), header: pane_text2[25], text: reading("#{t_dir}/pest.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=39792" }
-				set( (image "pics/changes/governor.png", left: left + move*4, top: top + jump*4, width: @icon_size2), header: pane_text2[26], text: reading("#{t_dir}/governor.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41977" }
-				set (image "pics/changes/levels.png", left: left + move*5, top: top + jump*4, width: @icon_size2), header: pane_text2[27], text: reading("#{t_dir}/levels.txt"), event: "secondary"
-				set (image "pics/changes/ai.png", left: left + move*6, top: top + jump*4, width: @icon_size2), header: pane_text2[28], text: reading("#{t_dir}/ai.txt"), event: "secondary"
+				set( (image "pics/changes/buildings.png", left: left, top: top, width: @icon_size2), header: pane_t2[6], text: reading("#{t_dir}/buildings.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-release-notes-rc10-beta-3" }
+				set (image "pics/changes/heroes.png", left: left + move, top: top, width: @icon_size2), header: pane_t2[7], text: reading("#{t_dir}/heroes.txt"), event: "secondary"
+				set (image "pics/misc/attack.png", left: left, top: top + jump, width: @icon_size2), header: pane_t2[8], text: reading("#{t_dir}/attack.txt"), event: "secondary"
+				set (image "pics/misc/knowledge.png", left: left + move, top: top + jump, width: @icon_size2), header: pane_t2[9], text: reading("#{t_dir}/knowledge.txt"), event: "secondary"
+				set( (image "pics/changes/arrangement.png", left: left + move*2, top: top + jump, width: @icon_size2), header: pane_t2[10], text: reading("#{t_dir}/arrangement.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
+				set (image "pics/changes/necromancy.png", left: left + move*3, top: top + jump, width: @icon_size2), header: pane_t2[11], text: reading("#{t_dir}/necromancy.txt"), event: "secondary"
+				set (image "pics/changes/gating.png", left: left + move*4, top: top + jump, width: @icon_size2), header: pane_t2[12], text: reading("#{t_dir}/gating.txt"), event: "secondary"
+				set( (image "pics/changes/spell_system.png", left: left + move*5, top: top + jump, width: @icon_size2), header: pane_t2[13], text: reading("#{t_dir}/spell_system.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
+				set (image "pics/changes/occultism.png", left: left + move*6, top: top + jump, width: @icon_size2), header: pane_t2[14], text: reading("#{t_dir}/occultism.txt"), event: "secondary"
+				set (image "pics/changes/movement.png", left: left + move*2, top: top + jump*2, width: @icon_size2), header: pane_t2[15], text: reading("#{t_dir}/movement.txt"), event: "secondary"
+				set( (image "pics/changes/generator.png", left: left + move*3, top: top + jump*2, width: @icon_size2), header: pane_t2[16], text: reading("#{t_dir}/generator.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41341" }
+				set (image "pics/changes/sites.png", left: left + move*4, top: top + jump*2, width: @icon_size2), header: pane_t2[17], text: reading("#{t_dir}/sites.txt"), event: "secondary"
+				set( (image "pics/changes/artifacts.png", left: left + move*5, top: top + jump*2, width: @icon_size2), header: pane_t2[18], text: reading("#{t_dir}/artifacts.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41528" }
+				set (image "pics/changes/bloodrage.png", left: left + move, top: top + jump*3, width: @icon_size2), header: pane_t2[19], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
+				set( (image "pics/changes/manual.png", left: left + move*2, top: top + jump*3, width: @icon_size2), header: pane_t2[20], text: reading("#{t_dir}/manual.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=43030" }
+				set (image "pics/changes/textures.png", left: left + move*3, top: top + jump*3, width: @icon_size2), header: pane_t2[21], text: reading("#{t_dir}/textures.txt"), event: "secondary"
+				set (image "pics/changes/atb.png", left: left + move*4, top: top + jump*3, width: @icon_size2), header: pane_t2[22], text: reading("#{t_dir}/atb.txt"), event: "secondary"
+				set (image "pics/changes/8skills.png", left: left + move, top: top + jump*4, width: @icon_size2), header: pane_t2[23], text: reading("#{t_dir}/8skills.txt"), event: "secondary"
+				set (image "pics/changes/townportal.png", left: left + move*2, top: top + jump*4, width: @icon_size2), header: pane_t2[24], text: reading("#{t_dir}/townportal.txt"), event: "secondary"
+				set( (image "pics/changes/pest.png", left: left + move*3, top: top + jump*4, width: @icon_size2), header: pane_t2[25], text: reading("#{t_dir}/pest.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=39792" }
+				set( (image "pics/changes/governor.png", left: left + move*4, top: top + jump*4, width: @icon_size2), header: pane_t2[26], text: reading("#{t_dir}/governor.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41977" }
+				set (image "pics/changes/levels.png", left: left + move*5, top: top + jump*4, width: @icon_size2), header: pane_t2[27], text: reading("#{t_dir}/levels.txt"), event: "secondary"
+				set (image "pics/changes/ai.png", left: left + move*6, top: top + jump*4, width: @icon_size2), header: pane_t2[28], text: reading("#{t_dir}/ai.txt"), event: "secondary"
+				set( (image "pics/changes/dragonblood.png", left: left + move*7, top: top + jump*4, width: @icon_size2), header: pane_t2[29], text: reading("#{t_dir}/dragonblood.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/might-magic-heroes-55-lore-update" }
 				@pane_magic = flow left: 0.56, top: 80, width: 0.38, height: 0.64
 			end
 		end
@@ -692,58 +707,205 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	end
 	
 	def artifact_slot sort
-		@primary_pane.clear do
-			if sort != 'micro_artifact' then
+		if sort != 'micro_artifact' then
+			@primary_pane.clear do
 				slots = (DB.execute( "select name from artifact_filter where filter = '#{sort}';" ))[0][0].split(",")
-				slots.each_with_index {|slot, i| set_artifacts sort, slot, i }
-			else
-				@artifact_list.clear do
-					image 'pics/themes/micro_pane.png', left: 120, top: 15
-					image 'pics/themes/micro_inventory.png', left: 120, top: 270
-					@shells = (DB.execute( "select id from micro_artifact_shell;" ))
-					@micro_eff = (DB.execute( "select id from micro_artifact_effect;" ))
-					@micro_slot, @up, @down = [], [], []
-					l = 247
-					3.times do |i|
-						@micro_slot << flow(left: l+66*i, top: 80, width: 65, height: 65)
-						@up << (image("pics/buttons/normal.png", left: l+20+66*i, top: 33, width: 25, height: 60).rotate 90)
-						@down << (image("pics/buttons/normal.png", left: l+20+66*i, top: 133, width: 25, height: 60).rotate 270)
+				slots.each_with_index { |slot, i| set_artifacts sort, slot, i }
+			end
+		else
+			pane_t1 = reading("panes/artifact_pane/buttons/micro_artifact/pane1.txt").split("\n")
+			@knowledge=1
+			@primary_pane.clear do
+				subtitle pane_t1[0], top: 10, align: "center"
+				@micro_pane = stack left: 45, top: 60, width: 280, height: 280;
+				subtitle pane_t1[1], left: 110, top: 365, size: 22
+				set ( @box_level = ( flow left: 257, top: 368, width: 50, height: 45 ) ),text: pane_t1[2], width: 300, height: 50, event: "primary"
+				set_knowledge
+			end
+
+			@artifact_list.clear do
+				image 'pics/themes/micro_pane.png', left: 120, top: 15
+				image 'pics/themes/micro_inventory.png', left: 120, top: 260
+				subtitle pane_t1[3], left: 152, top: 15, size: 18, stroke: white
+				subtitle pane_t1[4], left: 310, top: 15, size: 18, stroke: white
+				subtitle "x1       x2        x3", left: 265, top: 170, size: 18, stroke: white
+				subtitle pane_t1[5], left: 285, top: 195, size: 18, stroke: white
+				@shells = (DB.execute( "select id from micro_artifact_shell;" ))
+				@micro_eff = (DB.execute( "select id from micro_artifact_effect;" ))
+				@state, @micro_slot, @up, @down, @inventory = [0,0,0], [], [], [], []
+				@shell_slot = flow(left: 151, top: 80, width: 65, height: 65)
+				@shell_up = image("pics/buttons/horizontal.png", left: 152, top: 53, width: 60, height: 25)
+				@shell_down = (image("pics/buttons/horizontal.png", left: 152, top: 150, width: 60, height: 25).rotate 180)
+				@shell_ch, @shell_lvl = 0, 1
+				set_shell
+				l = 247
+				3.times do |i|
+					@micro_slot << flow(left: l+66*i, top: 80, width: 65, height: 65)
+					@up << image("pics/buttons/horizontal.png", left: l+1+67*i, top: 53, width: 60, height: 25).hide
+					@down << (image("pics/buttons/horizontal.png", left: l+1+67*i, top: 150, width: 60, height: 25).hide.rotate 180)
+					set_effect i
+				end
+				@up[0].show
+				@down[0].show
+				10.times { |i| @inventory << flow(left: 131+67*(i%5), top: 338 + 68*(i/5), width: 65, height: 65) }
+				button "#{pane_t1[6]}", left: 500, top: 100 do
+					if @shell_ch == 0 || ( @state.same_values? && @state[0] = 0) then
+						alert(pane_t1[7])
+					else
+						a, b, temp, shell_text = 0, 0, [], ""
+						@state.each_with_index { |s, i|	(s == 0) ? next : (temp << s) }
+						a, b = temp[0..1].sort
+						val = "#{a}#{b}".to_i
+						sub = (
+						case val
+						when 12..19 then 2
+						when 23..29 then 5
+						when 34..39 then 9
+						when 45..49 then 14
+						when 56..59 then 20
+						when 67..69 then 27
+						when 78..79 then 35
+						when 89 then 44
+						end )
+						name = reading("micro_artifacts/#{@sh_id}/name.txt")
+						case temp.count
+						 when 0,1 then suffix = reading("micro_artifacts/#{@micro_eff[@state[0]][0]}/suffix.txt")
+						 when 2 then  mod = val - sub
+									  prefix = reading("micro_artifacts/MA_PREFIXES/f_#{mod}.txt")
+						 when 3 then  mod = val - sub
+									  prefix = reading("micro_artifacts/MA_PREFIXES/f_#{mod}.txt")
+									  suffix = reading("micro_artifacts/#{@micro_eff[@state[2]][0]}/suffix.txt")
+						end
+						shell_text = "#{prefix} #{name} #{suffix}"
+						@inventory.each { |v| v.contents[0].nil? ? ( create_micro v, shell_text, @state.dup; break ) : nil }
 					end
-					micro_a_slot
+				end
+				subtitle pane_t1[8], left: 250, top: 280, size: 18, stroke: white
+				button("#{pane_t1[9]}", left: 220, top: 490) { @inventory.map!(&:clear) }
+			end
+		end
+	end
+	
+	def create_micro box, name, effects
+		txt, price = [], []
+		effects.each_with_index do |e, i|
+			e == 0 ? next : nil
+			id = @micro_eff[e][0]
+			values = DB.execute("select effect from micro_artifact_effect WHERE id='#{id}';" )[0][0]
+			cost = DB.execute( "select gold, Wood, ore, mercury, crystal, sulfur, gem from micro_artifact_effect WHERE id='#{id}';" )
+			price << cost[0..-1][0].map! { |x| x*(i+1) }
+			debug(values.class)
+			txt << (reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', ((1 + values*@knowledge).floor.to_s))
+		end
+		price = Hash[ RESOURCE.zip price.transpose.map { |x| x.reduce(:+) } ]
+		box.append do
+			set (image "pics/micro_artifacts/#{@sh_id}#{@shell_lvl}.png", width: 60), text: name, event: "secondary" do
+				@micro_pane.clear do
+					subtitle name, size: 18, align: "center"
+					txt.each { |t| para t, margin_left: 20, margin_right: 20 }
+					subtitle "Cost", top: 210, size: 18, align: "center"
+					flow(left: 38, top: 245, width: 300, height: 50 ) { set_resources price }
 				end
 			end
 		end
 	end
 	
-	def micro_a_slot
-		@state = [0,0,0]
-		#shell_slot = flow(left: 151, top: 80, width: 65, height: 65)
-		#shell_up = (image("pics/buttons/normal.png", left: 170, top: 33, width: 25, height: 60).rotate 90)
-		#shell_down = (image("pics/buttons/normal.png", left: 170, top: 133, width: 25, height: 60).rotate 270)
-		3.times { |i| micro_slot_update i }
+	def set_knowledge
+		@box_level.clear { subtitle "#{@knowledge}",left: 10, top: 3, size: 20, font: "Vivaldi" }
+		@box_level.click do |press| ############# Adjusting spell efects
+			@hovers.hide
+			case press
+			when 1 then @knowledge<100 ? @knowledge+=1 : nil
+			when 2 then @knowledge = 1
+			when 3 then @knowledge>1 ? @knowledge-=1 : nil
+			end
+			set_knowledge
+			spell_pane_effect
+		end
+	end
+		
+	def set_shell
+		@shell_lvl = 3
+		@sh_id = @shells[@shell_ch][0]
+		@state.map{|x| @shell_lvl-= (x==0 ? 1 : 0) }
+		@shell_lvl+=1 if @shell_lvl == 0
+		@shell_slot.clear do
+			if @shell_ch!=0 then
+				set (image "pics/micro_artifacts/#{@sh_id}#{@shell_lvl}.png", width: 60),
+				text: reading("micro_artifacts/#{@sh_id}/desc.txt"), 
+				header: reading("micro_artifacts/#{@sh_id}/name.txt"), 
+				event: "secondary"
+			end
+		end
+		@shell_up.click { @shell_ch < 4 ? ( @shell_ch+=1;set_shell) : nil }
+		@shell_down.click { @shell_ch > 0 ? ( @shell_ch-=1;set_shell) : nil }
+	end
+#=begin			
+	def set_effect i
+		@micro_slot[i].clear do
+			value = 0
+			@state[i]==0 ? next : nil
+			id = @micro_eff[@state[i]][0]
+			img = image "pics/micro_artifacts/#{id}.png", width: 60
+			name = reading("micro_artifacts/#{id}/name.txt")
+			desc = reading("micro_artifacts/#{id}/desc.txt")
+			values = DB.execute("select effect from micro_artifact_effect WHERE id='#{id}';" )[0][0]
+			cost = DB.execute( "select gold, Wood, ore, mercury, crystal, sulfur, gem from micro_artifact_effect WHERE id='#{id}';" )
+			price = Hash[RESOURCE.zip cost[0..-1][0]]
+			set img, text: desc, header: name, event: "secondary" do
+			case id
+			when 'MAE_HASTE' then value = (values*@knowledge).floor.to_s
+			when 'MAE_MAGIC_PROTECTION' then value = (1+values*@knowledge).floor.to_s
+			else value = (1+values*@knowledge).floor.to_s
+			end
+			txt = reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', value
+				@micro_pane.clear do
+					subtitle "Effect: #{name}", size: 18, align: "center"
+					para txt, margin_left: 20
+					subtitle "Cost", size: 18, top: 200, align: "center"
+					stack(width: 280, top: 240, height: 30, margin_left: 20) { set_resources price }
+				end
+			end
+		end
+		set_shell
+		@up[i].click do
+			(@state[i-1]!=0 || i==0) ? nil : next
+				@state[i] = (go_up @state[i], @state[i+1], @micro_eff.length)
+				set_effect i
+				show_hide_buttons i
+		end
+		@down[i].click do
+			(@state[i-1]!=0 || i==0) ? nil : next
+			@state[i] = (go_down @state[i], @state[i+1], @micro_eff.length)
+			set_effect i
+			show_hide_buttons i
+		end
+	end
+#=end
+	def show_hide_buttons i
+		if i<@state.count-1 then
+			if @state[i]!=0 then
+				[@up[i+1], @down[i+1]].map!(&:show)
+			else
+				[@up[i+1], @down[i+1]].map!(&:hide)
+			end
+		end
 	end
 	
-	def micro_slot_update i
-		@micro_slot[i].clear { image "pics/micro_artifacts/#{@micro_eff[@state[i]][0]}.png", width: 60 }
-		@up[i].click { set_micro_buttons i, @micro_eff.length }
-		@down[i].click { set_micro_buttons i, @micro_eff.length, "down" }
+	def go_up value, next_value, max
+		max.times do |k|
+			(value+k+1==max) ? ( (next_value.nil? || next_value==0) ? (return 0) : value=1-(k+1) ) : nil
+			@state.include?(value+k+1) ? nil : (return value+k+1)
+		end
+	end
+	
+	def go_down value, next_value, max
+		max.times do |k|
+			value-(k+1)<=0 ? ( ((next_value.nil? || next_value==0) && value!=0) ? (return 0) : value=max+k ) : nil
+			@state.include?(value-(k+1)) ? nil : (return value-(k+1))
+		end
 	end
 
-	def set_micro_buttons i, count, direction = "up"
-		#debug("#{state} - #{state[i]}")
-		#(direction == "up" && @state[i] < count - 1) ? ( @state[i] = (overlap @state[i], count) ) : nil
-		direction == "up" ? ( @state[i] = (overlap @state[i], count) ) : nil
-		(direction == "down" && @state[i] > 0) ? @state[i]-=1 : nil
-		micro_slot_update i
-	end
-	
-	def overlap value, k=1, max
-		(value+k-1 == max) ? (return value) : nil
-		@state.include?(value+k) ? ( overlap value, k+1 ) : @state[k]+=k
-		return value
-	end
-	
-	
 	def set_artifacts sort, a, i
 		button reading("panes/artifact_pane/buttons/#{sort}/#{a}.txt"), left: 68+120*(i%2), top: 70+35*(i/2), width: 100 do
 			@artifact_list.clear do
@@ -771,17 +933,15 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 
 	def main_menu
 		@backgr = image 'pics/themes/background.jpg', left: 0, top: 0, width: app.width, height: app.height
+		menu = reading("panes/main_menu.txt").split("\n")
 		@app = flow height: app.height do
-			menu = reading("panes/main_menu.txt").split("\n")
-			@main_slot = []
-			stack left: 0, top: 0,width: 0.291 do
+			stack left: 0, top: 0, width: 0.291 do
 				image 'pics/themes/factions_pane.png', left: 8, top: 68, width: 349, height: 201
 				image 'pics/themes/manuscript.png', left: 20, top: 270, width: 330
-				for i in 0..7 do
-					top = i/4*(@icon_size + 1); left = i*(@icon_size +1) - 4*top
-					@main_slot[i]=flow( left: @icon_size + 1 + left, top: 110 + top, width: @icon_size, height: @icon_size )
+				@main_slot=flow left: 61, top: 110 do
+					8.times { |i| flow left: (@icon_size+1)*(i%4), top: (@icon_size+1)*(i/4), width: @icon_size, height: @icon_size }
 				end
-				@primary_pane = stack top: 280, width: 1.0, height: 500; #################################### LEFT  - heroes stats and sheets
+				@primary_pane = stack left: 0, top: 280, width: 1.0, height: 500   # LEFT  - heroes stats and sheets
 			end
 			set( ( image "pics/buttons/town_index.png", left: 32, top: 25, width: 45, height: 45 ), text: menu[0], event: "menu" ) { town_pane }
 			set( ( image "pics/buttons/hero_index.png", left: 92, top: 25, width: 45, height: 45 ), text: menu[1], event: "menu" ) { hero_pane }
@@ -789,35 +949,17 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			set( ( image "pics/buttons/spell_index.png", left: 212, top: 25, width: 45, height: 45 ), text: menu[3], event: "menu" ) { spell_pane }
 			set( ( image "pics/buttons/artifact_index.png", left: 272, top: 25, width: 45, height: 45 ), text: menu[4], event: "menu" ) { artifact_pane }
 
-			@secondary_pane = stack left: 0.292, top: 0, width: 0.66, height: 0.99;	###################### RIGHT - SKILLWHEEL TABLE
+			@secondary_pane = stack left: 0.292, top: 0, width: 0.66, height: 0.99 # RIGHT - SKILLWHEEL TABLE
 			stack left: app.width - 60, top: app.height - 60, width: 60, height: 60 do
 				image "pics/themes/about.png"
 				set contents[0], text: "Credits", event: "secondary" do
-					@a.nil? ? nil : @a.close
-					@a=window(title: "About", width: 450, height: 200, resizable: false) do
+					@credits.nil? ? nil : @credits.close
+					@credits=window(title: "About", width: 450, height: 200, resizable: false) do
 						para File.read("text/credits.txt"), justify: true
 						button( "www.heroescommunity.com", left: 110, top: 150 ) { system("start http://heroescommunity.com/viewthread.php3?TID=42212") }
 					end
 				end
 			end
-
-			@shoe = 1
-			#button "resize", left: 320, top: 10 do
-				#self.resizable: true
-				#self.opacity = 50
-				#if @shoe == 1 then
-				#	app.resize 1400, 1000
-				#	@backgr.style(width: app.width, height: app.height)
-				#	@app.style(width: app.width, height: app.height)
-				#	@shoe = 2
-				#else
-				#	app.resize 1200, 800
-				#	@backgr.style(width: app.width, height: app.height)
-				#	@app.style(width: app.width, height: app.height)
-				#	@shoe = 1
-				#end
-				#self.resizable false
-			#end
 		end
 	end
 
@@ -825,4 +967,5 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 
 	main_menu  # define General app slots
 	hero_pane  # launch hero module
+
 end
