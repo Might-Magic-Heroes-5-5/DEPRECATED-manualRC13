@@ -28,7 +28,7 @@ end
 
 def reading f_name; begin return @texts.read(f_name) rescue nil end; end
 
-Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3", width: 1200, height: 800, resizable: false ) do
+Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4", width: 1200, height: 800, resizable: false ) do
 
 	###### defining system vars #####
 
@@ -39,7 +39,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	@hovers = tooltip()
 	@events = { "menu" => true, "primary" => true, "secondary" => true }
 	@icon_size, @icon_size2 = 60, 40
-	
+
 	###### defining data vars #####
 
 	DB = SQLite3::Database.new "settings/skillwheel.db"
@@ -47,12 +47,11 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 	MASTERIES = { MASTERY_BASIC: 1, MASTERY_ADVANCED: 2, MASTERY_EXPERT: 3 }
 	RESOURCE = [ "Gold", "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem"]
 	OFFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
-	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
-	@LG = "en" 										#deafult app language
-	@texts = Zip::File.open("text/#{@LG}.pak")
+	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]				
+	@texts = Zip::File.open("text/en.pak") 			#deafult app language
 	@offense, @defense, @mana_multiplier = 1, 1, 10     #skill multipliers - Offense, Defense, Intelligence
 	@wheel_turn = 0
-	
+
 	def set_resources price, x=0		
 		price.each do |key, value|
 			if value != 0 then
@@ -62,7 +61,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			end
 		end
 	end 
-	
+
 	def set_main page, object, dir_img, dir_txt
 		@main_slot.contents.each_with_index do |slot, i|
 			slot.clear do
@@ -147,7 +146,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		@right_button.click { set_button current, class_heroes.length }.show
 		set_level
 	end
-	
+
 	def file_exists ask1, ask2
 		s_file = ask(ask1)
 		if File.file?("save/#{s_file}") then
@@ -414,7 +413,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			@wheel_right.click { @wheel_right.style[:hidden] == true ? nil : @wheel_turn+=1; set_wheel }
 		end
 	end
-	
+
 	def load_hero hero
 		opts = YAML.load_file(hero)
 		@ch_class = opts['ch_class']
@@ -517,7 +516,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			end
 		end
 	end
-	
+
 	def spell_pane first=@primary_pane, second=@secondary_pane
 		@spell_mastery, @spell_power = 0, 1
 		schools = DB.execute("select id from guilds")
@@ -613,7 +612,6 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 					text_sp_effect.sub! var, "#{trim (b+s*@spell_power).round(2)}"
 				end
 			end
-			
 			@spell_text.replace "#{text_sp_effect}"
 			@spell_mana.replace spell[3]
 			@spell_lvl.replace spell[4]
@@ -649,7 +647,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 				@lg_list << p.split('/')[1].split('.')[0]
 			end
 			list_box :items => @lg_list.map{|x| x}, left: 170, top: 65, width: 100 do |n|
-				@LG = n
+				@texts = Zip::File.open("text/#{n.text}.pak")
 				@app.remove
 				main_menu
 				town_pane
@@ -705,7 +703,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			end
 		end
 	end
-	
+
 	def artifact_slot sort
 		if sort != 'micro_artifact' then
 			@primary_pane.clear do
@@ -714,7 +712,11 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			end
 		else
 			pane_t1 = reading("panes/artifact_pane/buttons/micro_artifact/pane1.txt").split("\n")
-			@knowledge=1
+			protection_coef = DB.execute( "select id from micro_protection;" )
+			p_max = DB.execute( "select effect from micro_artifact_effect where id='MAE_MAGIC_PROTECTION';")[0][0]
+			@protection = []
+			@knowledge = 1
+			protection_coef.each { |p| @protection << p_max*p[0] }
 			@primary_pane.clear do
 				subtitle pane_t1[0], top: 10, align: "center"
 				@micro_pane = stack left: 45, top: 60, width: 280, height: 280;
@@ -785,7 +787,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			end
 		end
 	end
-	
+
 	def create_micro box, name, effects
 		txt, price = [], []
 		effects.each_with_index do |e, i|
@@ -794,8 +796,11 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			values = DB.execute("select effect from micro_artifact_effect WHERE id='#{id}';" )[0][0]
 			cost = DB.execute( "select gold, Wood, ore, mercury, crystal, sulfur, gem from micro_artifact_effect WHERE id='#{id}';" )
 			price << cost[0..-1][0].map! { |x| x*(i+1) }
-			debug(values.class)
-			txt << (reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', ((1 + values*@knowledge).floor.to_s))
+			if id == 'MAE_MAGIC_PROTECTION' then
+				txt << (reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', (@protection[@knowledge > 59 ? 59 : @knowledge-1 ].floor.to_s))
+			else
+				txt << (reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', ((1 + values*@knowledge).floor.to_s))
+			end
 		end
 		price = Hash[ RESOURCE.zip price.transpose.map { |x| x.reduce(:+) } ]
 		box.append do
@@ -840,7 +845,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 		@shell_up.click { @shell_ch < 4 ? ( @shell_ch+=1;set_shell) : nil }
 		@shell_down.click { @shell_ch > 0 ? ( @shell_ch-=1;set_shell) : nil }
 	end
-#=begin			
+
 	def set_effect i
 		@micro_slot[i].clear do
 			value = 0
@@ -855,7 +860,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			set img, text: desc, header: name, event: "secondary" do
 			case id
 			when 'MAE_HASTE' then value = (values*@knowledge).floor.to_s
-			when 'MAE_MAGIC_PROTECTION' then value = (1+values*@knowledge).floor.to_s
+			when 'MAE_MAGIC_PROTECTION' then value = @protection[@knowledge > 59 ? 59 : @knowledge-1 ].floor.to_s
 			else value = (1+values*@knowledge).floor.to_s
 			end
 			txt = reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', value
@@ -881,7 +886,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b3",
 			show_hide_buttons i
 		end
 	end
-#=end
+
 	def show_hide_buttons i
 		if i<@state.count-1 then
 			if @state[i]!=0 then
