@@ -572,8 +572,8 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 				radio( left: 85+i*60, top: 310 ).click { @spell_mastery = i; spell_pane_effect };  
 				flow(left: 35+i*60, top: 292 + 36*(i%2), width: 120, height: 25 ) { para mastery, size: 12, align: "center" }
 			end
-			set ( image "pics/misc/s_mana.png", left: 125, top: 376, width: @icon_size/3 ), text: pane_t1[7], width: 250, height: 40, event: "primary"
-			@spell_mana = para "", left: 150, top: 373, size: 12
+			set ( image "pics/misc/s_mana.png", left: 125, top: 371, width: @icon_size/3 ), text: pane_t1[7], width: 250, height: 40, event: "primary"
+			@mana_f = flow left: 150, top: 369, width: 80, height: 70;
 			set ( @box_level = flow(left: 255, top: 371, width: 50, height: 45 ) ), text: pane_t1[9], event: "primary"
 		end
 		set_power
@@ -631,8 +631,23 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 				spell_effect = spell_effect[4..7] + spell_effect[0..3]
 				spell_increase = spell_increase[4..7] + spell_increase[0..3]
 			end
-			#spell[0].include?("_RUNE_") ? (text_sp_effect.sub! desc_vars[0], "#{spell[-1]}") : nil
-			spell[0].include?("_RUNE_") ? (text_sp_effect.clear) : @spell_mana.replace spell[3]
+			
+			if spell[0].include?("_RUNE_") then
+				text_sp_effect.clear;
+				r_values = spell[-1].split(",")
+				@mana_f.clear do
+					off = 0
+					r_values.each_with_index do |r, i|
+						if r != '0' then
+							image "pics/resources/#{RESOURCE[i]}.png", left: 40*(off%2), top: 22*(off/2);
+							para r, left: 22 + 40*(off%2), top: 22*(off/2)
+							off+=1
+						end
+					end
+				end
+			else
+				@mana_f.clear { para spell[3] }
+			end			
 			
 			case spell[0]
 			when "SPELL_DIVINE_VENGEANCE" then
@@ -684,7 +699,6 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 				end
 			end
 			@spell_text.replace "#{text_sp_effect}"
-			#@spell_mana.replace spell[3]
 			@bar.fraction = (spell[4].to_f/5).round(2)
 		end
 	end
@@ -816,7 +830,6 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 			first.clear do
 				subtitle pane_t1[0], top: 15, align: "center"
 				@micro_pane = stack left: 45, top: 60, width: 280, height: 280;
-				#subtitle pane_t1[1], left: 110, top: 367, size: 22
 				set ( @box_level = ( flow left: 255, top: 371, width: 50, height: 45 ) ),text: pane_t1[2], event: "primary"
 				set_knowledge
 			end
