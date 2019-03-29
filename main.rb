@@ -36,7 +36,7 @@ end
 
 def reading f_name; begin return @texts.read(f_name) rescue nil end; end
 
-Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
+Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
 	
 	###### defining data vars #####
 
@@ -47,24 +47,22 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 	OFFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
 	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
 	@texts = Zip::File.open("text/#{@@lg}.pak") 		#load texts
-	#@texts = Zip::File.open("text/en.pak") 		#load texts
 	@offense, @defense, @mana_multiplier = 1, 1, 10     #skill multipliers - Offense, Defense, Intelligence
 	@wheel_turn = 0
 	
 	###### defining system vars #####
-	font "settings/fonts/1-vivaldi.ttf" unless Shoes::FONTS.include? "1 Vivaldi"
+	font "settings/fonts/2-vivaldi.ttf" unless Shoes::FONTS.include? "1 Vivaldi "
 	font "settings/fonts/belmt.ttf" unless Shoes::FONTS.include? "Bell MT"
-	style Shoes::Subtitle, font: "1 Vivaldi"
+	style Shoes::Subtitle, font: "Gabriola", size: 28
 	style Shoes::Tagline, font: "Bookman Old Style", size: 16, align: "center"
 		
 	@events = { "menu" => true, "primary" => true, "secondary" => true }        ## Arrange GUI drawing slots into groups for the purpose of mass hiding
-	
+
 	GUI_SETTINGS = [															## defines hero skill wheel circle drawing vars for different GUI resolutions
-	[60, 40, 40,  0,   0,   0,   0,  0, 0,  0 ],
-	[60, 40, 36, 15, -30, -50, -22, -2, 40, 0 ]
+	[60, 40, 40,  0,   0,   0,   0,  0,  0, 0,  0,  0 ],
+	[60, 40, 36, 15, -30, -50, -22, -2, 40, 0, 15,  -10 ]
 	]
-	@icon_size, @icon_size2, @icon_size3, @M_SL_L, @M_SL_T, @M_WH, @M_BR, @M_SR, @M_WH_L, @M_WH_R = GUI_SETTINGS[@@res]
-	
+	@icon_size, @icon_size2, @icon_size3, @M_SL_L, @M_SL_T, @M_WH, @M_BR, @M_SR, @M_WH_L, @M_WH_R, @ARR_L, @ARR_T = GUI_SETTINGS[@@res]
 	@hovers = tooltip(reading("properties/font_type.txt").split("\r\n"), 		## set default text fonts (should be monospaced)
 		reading("properties/font_size.txt").split("\r\n").map(&:to_i),			## set default font size
 		reading("properties/calc_text_size.txt").split("\r\n").map(&:to_i),		## define width and height size per char for (text and text2) popup size calculation (monospaced font is advisable)
@@ -150,7 +148,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		end
 		@save.clear do
 			s_txt = reading("panes/hero_pane/save.txt").split("\n")
-			button s_txt[0], left: 0, top: 0, width: 81, height: 25 do
+			button s_txt[0], left: 0, top: 0, width: 90, height: 28 do
 				options = ['hero', 'ch_class', 'ch_primary', 'hero_secondary', 'hero_mastery', 'hero_perks', 'hero_level' ]
 				user_data = [ hero, @ch_class, @ch_primary, @hero_secondary, @hero_mastery, @hero_perks, @hero_level ]
 				data = Hash[options.map {|x| [x, ""]}]
@@ -178,7 +176,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 	end
 
 	def set_level
-		@box_level.clear { subtitle "#{@hero_level}", size: 20 }
+		@box_level.clear { subtitle "#{@hero_level}", top: -27, size: 27 }
 		set_primary
 		@box_level.click do |press| ############# Hero leveling up and gaining of primary stats based on chance
 			@hovers.hide
@@ -378,7 +376,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 			primary_t1 = flow do
 				@events["primary"] = true
 				table_image = [ "attack", "defense", "spellpower", "knowledge" ]
-				subtitle pane_t1[0], top: 15, align: "center"
+				subtitle pane_t1[0], align: "center"	### Classes header
 				@class_board = flow left: 39, top: 60, width: 280, height: @icon_size + 10 ############# CLASSES LAYOUT
 				flow width: 200, left: 90, top: 120 do	 ############# PRIMARY STATS TABLE
 					12.times { |i| flow(height: 47, width: 47) { border("rgb(105, 105, 105)", strokewidth: 1) } }
@@ -394,13 +392,13 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 					set ( image "pics/misc/s_damage.png", left: 80, top: 11, width: @icon_size/3 ), text: pane_t1[3], width: 500, height: 40, event: "primary"
 					set ( image "pics/misc/s_defense.png", left: 167, top: 11, width: @icon_size/3 ), text: pane_t1[4], width: 500, height: 40, event: "primary"
 					set ( image "pics/misc/s_mana.png", left: 253, top: 11, width: @icon_size/3 ), text: pane_t1[5], width: 250, height: 40, event: "primary"
-					subtitle pane_t1[6], left: 70, top: 300, size: 18
+					subtitle pane_t1[6], left: 70, top: 290, size: 22 ### Mana text
 					@hero_spell_pane = flow left: 80, top: 70, height: 44, width: 170;
 					button pane_t1[7], left: 120, top: 145, height: 20, width: 120 do
 						primary_t1.hide
 						first.append do
 							primary_t2 = flow width: 1.0, height: 0.9 do
-								subtitle pane_t1[8], align: "center", top: 10
+								subtitle pane_t1[8], align: "center"
 								q = stack left: 80, top: 57, width: 252, height: 330, scroll: true;
 								save_list q, pane_t1[10], pane_t1[11]
 								start { q.scroll_top = 1 } ## this line fixes Framework bug
@@ -431,9 +429,10 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		end
 
 		second.clear do
+
 			image 'pics/themes/wheel.png', left: 5+@M_WH_L, top: 2+@M_WH_R, width: 785+@M_WH; c_width, c_height, step, start_rad, begin_rad, start_rad_up = 796+@M_WH, 800+@M_WH, Math::PI/6, 0, 362+@M_BR, 58+@M_SR
-			@wheel_left = image "pics/buttons/wheel_arrow.png", left: 370, top: 280 do end.hide.rotate 180
-			@wheel_right = image "pics/buttons/wheel_arrow.png", left: 425, top: 280 do end.hide
+			@wheel_left = image "pics/buttons/wheel_arrow.png", left: 355 + @ARR_L, top: 290 + @ARR_T do end.hide.rotate 180
+			@wheel_right = image "pics/buttons/wheel_arrow.png", left: 410 + @ARR_L, top: 290 + @ARR_T do end.hide
 			@box_hero = flow left: 355+@M_SL_L, top: 355+@M_SL_T, width: 80, height: 80
 			@save = flow left: 355+@M_SL_L, top: 440+@M_SL_T, width: 82, height: 30
 			@left_button = image "pics/buttons/normal.png", left: 325+@M_SL_L, top: 357+@M_SL_T, width: 25, height: 80 do end.hide.rotate 180
@@ -466,8 +465,8 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		pane_t1 = (reading "panes/creature_pane/name.txt").split("\n")
 		first.clear do
 			@events["primary"] = true
-			subtitle pane_t1[0], top: 15, align: "center"
-			@creature_name = subtitle "", left: 5, top: 55, size: 20, align: "center"
+			subtitle pane_t1[0], align: "center"
+			@creature_name = subtitle "", left: 5, top: 40, size: 24, align: "center"
 			flow left: 70, top: 50, width: 250, height: 300 do
 				left, top = 10
 				image 'pics/themes/creature_spells.png', left: 65, top: 25, width: 240, height: 260
@@ -482,20 +481,20 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 				set ( image "pics/misc/s_shots.png", left: left, top: 206, width: 18 ), text: pane_t1[8], event: "primary"
 				set ( image "pics/skills/active/hero_skill_recruitment.png", left: left, top: 229, width: 21 ), text: pane_t1[9], event: "primary"
 			end
-			subtitle pane_t1[10], top: 305, size: 22, align: "center"
+			subtitle pane_t1[10], top: 295, size: 22, align: "center"
 			@cost_slot = flow left: 70, top: 340, width: 150, height: 30;
-			subtitle pane_t1[11], left: 134, top: 370, size: 22
+			subtitle pane_t1[11], left: 134, top: 360, size: 22
 		end
 
 		second.clear do
 			flow left: 30, top: 70, width: 438, height: 660 do
 				image 'pics/themes/pane2.png', width: 1.0, height: 1.0
-				subtitle pane_t1[12], top: 10, stroke: white, align: "center", size: 30
+				subtitle pane_t1[12], top: 0, stroke: white, align: "center", size: 30
 				@pane2 = flow left: 0, top: 35, width: 1.0, height: 0.9, scroll: true, scroll_top: 100
 			end
 			flow left: 500, top: 45, width: 350, height: 690 do
 				image 'pics/themes/creature_back.png', width: 433
-				flow( left: 40, top: 40, width: 310, height: 40 ) { @faction_name = subtitle "", top: 5, size: 22, align: "center" }
+				flow( left: 40, top: 40, width: 310, height: 40 ) { @faction_name = subtitle "", top: -10, size: 24, align: "center" }
 				x, y = 63, 22;
 				for q in 0..20
 					x+=60
@@ -521,15 +520,15 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 					#creature_spell_mastery = read_skills dir_xdb, 0, "<Mastery>", "</Mastery>"
 					@creature_stats.clear do
 						para x[1], left: 10, top: 3, size: 13
-						para x[2], left: 10, top: 24, size: 13
-						para "#{x[4]} - #{x[5]}", left: 10, top: 46, size: 13
+						para x[2], left: 10, top: 25, size: 13
+						para "#{x[4]} - #{x[5]}", left: 10, top: 47, size: 13
 						para x[7], left: 10, top: 70, size: 13
 						para x[6], left: 10, top: 93, size: 13
 						para x[9], left: 10, top: 115, size: 13
 						para x[12], left: 10, top: 139, size: 13
 						para x[3], left: 10, top: 162, size: 13
 						para x[15], left: 10, top: 187, size: 13
-						subtitle x[13], left: 164, top: 280
+						subtitle x[13], left: 164, top: 258
 						i=0
 						creature_spells.each do |spell|
 							if spell.include?("ABILITY") then
@@ -563,13 +562,13 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		pane_t1 = (reading "panes/spell_pane/name.txt").split("\n")
 		first.clear do
 			@events["primary"] = true
-			subtitle pane_t1[0], top: 15, align: "center"
-			subtitle pane_t1[1], top: 58, size: 18, align: "center"
+			subtitle pane_t1[0], align: "center"
+			subtitle pane_t1[1], top: 43, size: 22, align: "center"
 			@bar = progress left: 81, top: 90, width: 200, height: 3
 			5.times { |i| para i+1, left: 110+i*40, top: 95 }
 			flow(left: 55, top: 120, width: 260, height: 160) { @spell_text = para "", align: "left", justify: true, size: 12 }
 			pane_t1[2..5].each_with_index do |mastery, i|
-				radio( left: 85+i*60, top: 310 ).click { @spell_mastery = i; spell_pane_effect };  
+				radio(:mastery, left: 85+i*60, top: 310).click { @spell_mastery = i; spell_pane_effect };  
 				flow(left: 35+i*60, top: 292 + 36*(i%2), width: 120, height: 25 ) { para mastery, size: 12, align: "center" }
 			end
 			set ( image "pics/misc/s_mana.png", left: 125, top: 371, width: @icon_size/3 ), text: pane_t1[7], width: 250, height: 40, event: "primary"
@@ -704,7 +703,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 	end
 
 	def set_power  ############# Adjusting spell efects
-		@box_level.clear { subtitle "#{@spell_power}",left: 10, top: 3, size: 20 }
+		@box_level.clear { subtitle "#{@spell_power}",left: 10, top: -27, size: 27 }
 		@box_level.click do |press|
 			@hovers.hide
 			case press
@@ -728,7 +727,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		first.clear do
 			@events["primary"] = true
 			@lg_list = []
-			subtitle pane_t1[0], top: 15, align: "center"
+			subtitle pane_t1[0], align: "center"
 			flow left: 55, top: 60, width: 200, height: 300 do
 				para pane_t1[1], left: 5, top: 5, size: 12
 				Dir.glob("text/**/*.pak").reject{ |rj| File.directory?(rj) }.each_with_index do |p, i|
@@ -736,7 +735,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 					@lg_list << lg_name
 					@@lg == lg_name ? ( lg_cur = i ) : nil
 				end
-				list_box :items => @lg_list.map{|x| x}, choose: @lg_list[lg_cur] , left: 10, top: 30, width: 100 do |n|
+				list_box :items => @lg_list.map{|x| x}, choose: @lg_list[lg_cur] , left: 40, top: 30, width: 80, height: 19 do |n|
 					@@lg = n.text
 					if @@lg != @lg_list[lg_cur] then
 						@texts = Zip::File.open("text/#{@@lg}.pak")
@@ -750,13 +749,14 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 						town_pane
 					end
 				end
-				para pane_t1[2], left: 5, top: 60, size: 12
+				para pane_t1[2], left: 5, top: 75, size: 12
 				gui_resolution = [ "1200x800", "1200x750" ]
-				list_box :items => gui_resolution, choose: gui_resolution[@@res], left: 10, top: 85, width: 100 do |n|
+				list_box :items => gui_resolution, choose: gui_resolution[@@res], left: 40, top: 100, width: 80, height: 19 do |n|
 					if n.text != gui_resolution[@@res] then
 						@@res = gui_resolution.index(n.text)
 						@@APP_DB.execute( "update settings set value='#{@@res}' where name = 'app_size';" )
-						alert(pane_t1[3])
+						#alert(pane_t1[3])
+						alert  "test"
 					end
 				end
 			end
@@ -765,10 +765,10 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		second.clear do
 			flow left: 50, top: 60, width: 730, height: 700 do	
 				image 'pics/themes/town.png', width: 1.0, height: 1.0
-				subtitle pane_t2[0], top: 47, align: "center"
+				subtitle pane_t2[0], top: 30, align: "center"
 				left, top, jump, move = 60, 130, 72, 50
 				stack left: 50, top: 95, width: 0.85, height: 0.64 do
-					pane_t2[1..6].each_with_index { |p, i| tagline p, align:  "left", stroke: white, top: 0 + jump*i }
+					pane_t2[1..6].each_with_index { |p, i| subtitle p, align:  "left", stroke: white, top: -12 + jump*i, size: 22 }
 				end
 				set( (image "pics/changes/buildings.png", left: left, top: top, width: @icon_size2), header: pane_t2[7], text: reading("#{t_dir}/buildings.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-release-notes-rc10-beta-3" }
 				set (image "pics/changes/heroes.png", left: left + move, top: top, width: @icon_size2), header: pane_t2[8], text: reading("#{t_dir}/heroes.txt"), event: "secondary"
@@ -808,7 +808,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		second.clear do
 			flow left: 80, top: 108, width: 650, height: 600, scroll: true do
 				image 'pics/themes/pane3.png', width: 1.0, height: 1.0
-				subtitle reading("panes/artifact_pane/name.txt"), top: 15, align: "center", stroke: white
+				subtitle reading("panes/artifact_pane/name.txt"), top: 0, align: "center", stroke: white
 				@artifact_list = flow left: 0.05 , top: 0.1, width: 0.95, height: 0.9
 			end
 		end
@@ -828,7 +828,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 			@knowledge = 1
 			protection_coef.each { |p| @protection << p_max*p[0] }
 			first.clear do
-				subtitle pane_t1[0], top: 15, align: "center"
+				subtitle pane_t1[0], align: "center"
 				@micro_pane = stack left: 45, top: 60, width: 280, height: 280;
 				set ( @box_level = ( flow left: 255, top: 371, width: 50, height: 45 ) ),text: pane_t1[2], event: "primary"
 				set_knowledge
@@ -837,10 +837,10 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 			@artifact_list.clear do
 				image 'pics/themes/micro_pane.png', left: 120, top: 15
 				image 'pics/themes/micro_inventory.png', left: 120, top: 260
-				subtitle pane_t1[3], left: 152, top: 20, size: 18, stroke: white
-				subtitle pane_t1[4], left: 310, top: 20, size: 18, stroke: white
-				subtitle "x1      x2       x3", left: 263, top: 175, size: 18, stroke: white
-				subtitle pane_t1[5], top: 200, size: 18, stroke: white, align: "center"
+				subtitle pane_t1[3], left: 152, top: 5, size: 22, stroke: white
+				subtitle pane_t1[4], left: 310, top: 5, size: 22, stroke: white
+				subtitle "x1         x2         x3", left: 268, top: 155, size: 22, stroke: white
+				subtitle pane_t1[5], top: 180, size: 22, stroke: white, align: "center"
 				@shells = (DB.execute( "select id from micro_artifact_shell;" ))
 				@micro_eff = (DB.execute( "select id from micro_artifact_effect;" ))
 				@state, @micro_slot, @up, @down, @inventory = [0,0,0], [], [], [], []
@@ -854,7 +854,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 					@micro_slot << flow(left: l+66*i, top: 81, width: 65, height: 65)
 					@up << image("pics/buttons/horizontal.png", left: l+1+67*i, top: 53, width: 60, height: 25).hide
 					@down << (image("pics/buttons/horizontal.png", left: l+1+67*i, top: 150, width: 60, height: 25).hide.rotate 180)
-					set_effect i, pane_t1[9]
+					set_effect i, pane_t1[10]
 				end
 				@up[0].show
 				@down[0].show
@@ -891,7 +891,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 						@inventory.each { |v| v.contents[0].nil? ? ( create_micro v, shell_text, @state.dup, pane_t1[10]; break ) : nil }
 					end
 				end
-				subtitle pane_t1[8], left: 250, top: 285, size: 18, stroke: white
+				subtitle pane_t1[8], left: 250, top: 270, size: 22, stroke: white
 				button("#{pane_t1[9]}", left: 198, top: 490, width: 200 ) { @inventory.map!(&:clear) }
 			end
 		end
@@ -915,9 +915,9 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 		box.append do
 			set (image "pics/micro_artifacts/#{@sh_id}#{@shell_lvl}.png", width: 60), text: name, event: "secondary" do
 				@micro_pane.clear do
-					subtitle name, size: 18, align: "center"
+					para name, size: 14, align: "center"
 					txt.each { |t| para t, margin_left: 20, margin_right: 20 }
-					subtitle txt_cost, top: 210, size: 18, align: "center"
+					subtitle txt_cost, top: 200, size: 20, align: "center"
 					flow(left: 38, top: 245, width: 300, height: 50 ) { set_resources price }
 				end
 			end
@@ -925,7 +925,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 	end
 	
 	def set_knowledge
-		@box_level.clear { subtitle "#{@knowledge}", left: 10, top: 3, size: 20 }
+		@box_level.clear { subtitle "#{@knowledge}", left: 10, top: -27, size: 27 }
 		@box_level.click do |press| ############# Adjusting spell efects
 			@hovers.hide
 			case press
@@ -974,11 +974,11 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 Reference Manual, database: RC10b4",
 			end
 			txt = reading("micro_artifacts/#{id}/effect.txt").sub! '<value>', value
 				@micro_pane.clear do
-					subtitle "#{name}", size: 18, align: "center"
+					para "#{name}", size: 14, align: "center"
 					para txt, margin_left: 20
-					subtitle txt_cost, size: 18, top: 200, align: "center"
-					stack(width: 280, top: 240, height: 30, margin_left: 20) { set_resources price }
-				end
+					subtitle txt_cost, size: 20, top: 200, align: "center"
+					stack(left: 38, top: 245, width: 300, height: 50) { set_resources price }
+				end			
 			end
 		end
 		set_shell
