@@ -466,7 +466,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 		first.clear do
 			@events["primary"] = true
 			subtitle pane_t1[0], align: "center"
-			@creature_name = subtitle "", left: 5, top: 40, size: 24, align: "center"
+			@creature_name = subtitle "", top: 40, size: 24, align: "center"
 			flow left: 70, top: 50, width: 250, height: 300 do
 				left, top = 10
 				image 'pics/themes/creature_spells.png', left: 65, top: 25, width: 240, height: 260
@@ -600,6 +600,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 	end
 
 	def spell_pane_effect spell=@spell_current
+
 		unless spell.nil? then
 			desc_vars = []
 			spell_effect = spell[1].split(",").map(&:to_f)
@@ -645,7 +646,11 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 					end
 				end
 			else
-				@mana_f.clear { para spell[3] }
+				if spell[5] == "MAGIC_SCHOOL_DESTRUCTIVE" and spell[0] != "SPELL_DEEP_FREEZE" or spell[0] == "SPELL_MAGIC_FIST" then
+					@mana_f.clear { para "#{spell[3]}/#{spell[3]*2}" }
+				else
+					@mana_f.clear { para spell[3] }
+				end
 			end			
 			
 			case spell[0]
@@ -694,7 +699,12 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				desc_vars.each_with_index do |var, i|
 					b = spell_effect[@spell_mastery+4*i]
 					s = spell_increase[@spell_mastery+4*i]
-					text_sp_effect.sub! var, "#{trim (b+s*@spell_power).round(2)}"
+					dmg = (b+s*@spell_power).round(2)
+					if spell[5] == "MAGIC_SCHOOL_DESTRUCTIVE" and spell[0] != "SPELL_DEEP_FREEZE" or spell[0] == "SPELL_MAGIC_FIST" then
+						text_sp_effect.sub! var, "#{trim dmg}.\nEmpowered damage: #{trim dmg*1.5}"
+					else
+						text_sp_effect.sub! var, "#{trim (b+s*@spell_power).round(2)}"
+					end
 				end
 			end
 			@spell_text.replace "#{text_sp_effect}"
@@ -772,29 +782,34 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				end
 				set( (image "pics/changes/buildings.png", left: left, top: top, width: @icon_size2), header: pane_t2[7], text: reading("#{t_dir}/buildings.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-release-notes-rc10-beta-3" }
 				set (image "pics/changes/heroes.png", left: left + move, top: top, width: @icon_size2), header: pane_t2[8], text: reading("#{t_dir}/heroes.txt"), event: "secondary"
+				set (image "pics/changes/townportal.png", left: left + move*2, top: top, width: @icon_size2), header: pane_t2[25], text: reading("#{t_dir}/townportal.txt"), event: "secondary"
+				set( (image "pics/changes/governor.png", left: left + move*3, top: top, width: @icon_size2), header: pane_t2[27], text: reading("#{t_dir}/governor.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41977" }
 				set (image "pics/misc/attack.png", left: left, top: top + jump, width: @icon_size2), header: pane_t2[9], text: reading("#{t_dir}/attack.txt"), event: "secondary"
 				set (image "pics/misc/knowledge.png", left: left + move, top: top + jump, width: @icon_size2), header: pane_t2[10], text: reading("#{t_dir}/knowledge.txt"), event: "secondary"
-				set( (image "pics/changes/arrangement.png", left: left + move*2, top: top + jump, width: @icon_size2), header: pane_t2[11], text: reading("#{t_dir}/arrangement.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
-				set (image "pics/changes/necromancy.png", left: left + move*3, top: top + jump, width: @icon_size2), header: pane_t2[12], text: reading("#{t_dir}/necromancy.txt"), event: "secondary"
-				set (image "pics/changes/gating.png", left: left + move*4, top: top + jump, width: @icon_size2), header: pane_t2[13], text: reading("#{t_dir}/gating.txt"), event: "secondary"
-				set( (image "pics/changes/spell_system.png", left: left + move*5, top: top + jump, width: @icon_size2), header: pane_t2[14], text: reading("#{t_dir}/spell_system.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
-				set (image "pics/changes/occultism.png", left: left + move*6, top: top + jump, width: @icon_size2), header: pane_t2[15], text: reading("#{t_dir}/occultism.txt"), event: "secondary"
-				set (image "pics/changes/movement.png", left: left, top: top + jump*2, width: @icon_size2), header: pane_t2[16], text: reading("#{t_dir}/movement.txt"), event: "secondary"
-				set( (image "pics/changes/generator.png", left: left + move, top: top + jump*2, width: @icon_size2), header: pane_t2[17], text: reading("#{t_dir}/generator.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41341" }
-				set (image "pics/changes/sites.png", left: left + move*2, top: top + jump*2, width: @icon_size2), header: pane_t2[18], text: reading("#{t_dir}/sites.txt"), event: "secondary"
-				set( (image "pics/changes/artifacts.png", left: left + move*3, top: top + jump*2, width: @icon_size2), header: pane_t2[19], text: reading("#{t_dir}/artifacts.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41528" }
-				set (image "pics/changes/bloodrage.png", left: left, top: top + jump*3, width: @icon_size2), header: pane_t2[20], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
+				set( (image "pics/changes/spell_system.png", left: left + move*2, top: top + jump, width: @icon_size2), header: pane_t2[14], text: reading("#{t_dir}/spell_system.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
+				set (image "pics/changes/8skills.png", left: left + move*3, top: top + jump, width: @icon_size2), header: pane_t2[24], text: reading("#{t_dir}/8skills.txt"), event: "secondary"
+				set (image "pics/changes/levels.png", left: left + move*4, top: top + jump, width: @icon_size2), header: pane_t2[28], text: reading("#{t_dir}/levels.txt"), event: "secondary"
+				set (image "pics/changes/movement.png", left: left + move*5, top: top + jump, width: @icon_size2), header: pane_t2[16], text: reading("#{t_dir}/movement.txt"), event: "secondary"
+				
+				
+				set( (image "pics/changes/arrangement.png", left: left, top: top + jump*2, width: @icon_size2), header: pane_t2[11], text: reading("#{t_dir}/arrangement.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41320" }
+				set (image "pics/changes/necromancy.png", left: left + move, top: top + jump*2, width: @icon_size2), header: pane_t2[12], text: reading("#{t_dir}/necromancy.txt"), event: "secondary"
+				set (image "pics/changes/gating.png", left: left + move*2, top: top + jump*2, width: @icon_size2), header: pane_t2[13], text: reading("#{t_dir}/gating.txt"), event: "secondary"
+				set (image "pics/changes/occultism.png", left: left + move*3, top: top + jump*2, width: @icon_size2), header: pane_t2[15], text: reading("#{t_dir}/occultism.txt"), event: "secondary"
+				set (image "pics/changes/bloodrage.png", left: left + move*4, top: top + jump*2, width: @icon_size2), header: pane_t2[34], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
+				
+				set (image "pics/changes/bloodrage_gui.png", left: left, top: top + jump*3, width: @icon_size2), header: pane_t2[20], text: reading("#{t_dir}/bloodrage_gui.txt"), event: "secondary"
 				set( (image "pics/changes/manual.png", left: left + move, top: top + jump*3, width: @icon_size2), header: pane_t2[21], text: reading("#{t_dir}/manual.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=43030" }
 				set (image "pics/changes/textures.png", left: left + move*2, top: top + jump*3, width: @icon_size2), header: pane_t2[22], text: reading("#{t_dir}/textures.txt"), event: "secondary"
-				set (image "pics/changes/atb.png", left: left + move*3, top: top + jump*3, width: @icon_size2), header: pane_t2[23], text: reading("#{t_dir}/atb.txt"), event: "secondary"
-				set (image "pics/changes/8skills.png", left: left, top: top + jump*4, width: @icon_size2), header: pane_t2[24], text: reading("#{t_dir}/8skills.txt"), event: "secondary"
-				set (image "pics/changes/townportal.png", left: left + move, top: top + jump*4, width: @icon_size2), header: pane_t2[25], text: reading("#{t_dir}/townportal.txt"), event: "secondary"
-				set( (image "pics/changes/pest.png", left: left + move*2, top: top + jump*4, width: @icon_size2), header: pane_t2[26], text: reading("#{t_dir}/pest.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=39792" }
-				set( (image "pics/changes/governor.png", left: left + move*3, top: top + jump*4, width: @icon_size2), header: pane_t2[27], text: reading("#{t_dir}/governor.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41977" }
-				set (image "pics/changes/levels.png", left: left + move*4, top: top + jump*4, width: @icon_size2), header: pane_t2[28], text: reading("#{t_dir}/levels.txt"), event: "secondary"
-				set (image "pics/changes/ai.png", left: left + move*5, top: top + jump*4, width: @icon_size2), header: pane_t2[29], text: reading("#{t_dir}/ai.txt"), event: "secondary"
-				set( (image "pics/changes/dragonblood.png", left: left + move*6, top: top + jump*4, width: @icon_size2), header: pane_t2[30], text: reading("#{t_dir}/dragonblood.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/might-magic-heroes-55-lore-update" }
-				set( (image "pics/changes/duel_mode.png", left: left + move*7, top: top + jump*4, width: @icon_size2), header: pane_t2[31], text: reading("#{t_dir}/duel_mode.txt"), event: "secondary" ) { system "start https://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-new-creature-duel-mode-rc10beta" }
+				set (image "pics/changes/atb.png", left: left + move*3, top: top + jump*3, width: @icon_size2), header: pane_t2[23], text: reading("#{t_dir}/atb.txt"), event: "secondary"				
+				set( (image "pics/changes/pest.png", left: left, top: top + jump*4, width: @icon_size2), header: pane_t2[26], text: reading("#{t_dir}/pest.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=39792" }
+				set (image "pics/changes/ai.png", left: left + move, top: top + jump*4, width: @icon_size2), header: pane_t2[29], text: reading("#{t_dir}/ai.txt"), event: "secondary"
+				set( (image "pics/changes/dragonblood.png", left: left + move*2, top: top + jump*4, width: @icon_size2), header: pane_t2[30], text: reading("#{t_dir}/dragonblood.txt"), event: "secondary" ) { system "start http://www.moddb.com/mods/might-magic-heroes-55/news/might-magic-heroes-55-lore-update" }
+				set( (image "pics/changes/duel_mode.png", left: left + move*3, top: top + jump*4, width: @icon_size2), header: pane_t2[31], text: reading("#{t_dir}/duel_mode.txt"), event: "secondary" ) { system "start https://www.moddb.com/mods/might-magic-heroes-55/news/mmh55-new-creature-duel-mode-rc10beta" }
+				set( (image "pics/changes/generator.png", left: left + move*4, top: top + jump*4, width: @icon_size2), header: pane_t2[17], text: reading("#{t_dir}/generator.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41341" }
+				set (image "pics/changes/sites.png", left: left + move*5, top: top + jump*4, width: @icon_size2), header: pane_t2[18], text: reading("#{t_dir}/sites.txt"), event: "secondary"
+				set( (image "pics/changes/artifacts.png", left: left + move*6, top: top + jump*4, width: @icon_size2), header: pane_t2[19], text: reading("#{t_dir}/artifacts.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41528" }
+				
 				set (image "pics/changes/gryphnchain.png", left: left, top: top + jump*5, width: @icon_size2), header: pane_t2[32], text: reading("#{t_dir}/gryphnchain.txt"), event: "secondary"
 				set (image "pics/changes/boots.png", left: left + move, top: top + jump*5, width: @icon_size2), header: pane_t2[33], text: reading("#{t_dir}/boots.txt"), event: "secondary"
 			end
