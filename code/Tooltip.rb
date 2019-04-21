@@ -57,3 +57,42 @@ class Tooltip < Shoes::Widget
 
 	def hide; @menu.hide; end
 end
+
+
+class Click_box < Shoes::Widget
+  attr_accessor :width, :align, :color, :font, :size
+  
+	def initialize(fmts={})
+		@width = fmts[:width] || 50
+		@height = 40
+		@align = fmts[:align] || "center"
+		@color = fmts[:color] || black
+		@font = (fmts[:font] ? fmts[:font] : "Gabriola" )
+		@size = fmts[:size] || 28
+	end
+  
+	def create( v={})
+		@v = v
+		flow { @box = flow left: v[:left], top: v[:top], width: @width, height: @height }
+		app.set @box, text: v[:text], event: "primary"
+	end
+	
+	def update(&block)
+		@box.clear { subtitle @v[:val], top: -25, align: @v[:align] || @align, stroke: @v[:strole] || @color, font: @v[:font] || @font, size: @v[:size] || @size }
+		block.call if block_given?
+		@box.click do |press|
+			app.instance_variable_get(:@hovers).hide
+			case press
+			when 1 then @v[:val]<@v[:max] ? @v[:val]+=1 : nil
+			when 2 then @v[:val] = @v[:min]
+			when 3 then @v[:val]<(@v[:max] - @v[:jump] + 1) ? @v[:val]+=@v[:jump] : nil
+			end
+			update {block.call}
+		end
+	end
+	
+	def reset(new=1); @v[:val]=new; update end
+	
+	def show; return @v[:val] end
+  
+end
