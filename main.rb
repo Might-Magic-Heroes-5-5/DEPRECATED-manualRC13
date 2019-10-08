@@ -4,7 +4,6 @@ require 'sqlite3'
 require 'yaml'
 require 'zip'
 
-
 @@APP_DB = SQLite3::Database.new "settings/app_settings.db"
 @@lg=@@APP_DB.execute( "select value from settings where name='language';" )[0][0]   		#get language
 @@res=@@APP_DB.execute( "select value from settings where name='app_size';" )[0][0].to_i	#get app size
@@ -30,16 +29,22 @@ end
 
 def reading f_name; begin return @texts.read(f_name) rescue nil end; end
 
-Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
+Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
 	
 	###### defining data vars #####
-
+	Shoes::settings.wintmo = 5
 	DB = SQLite3::Database.new "settings/skillwheel.db"
 	FACTIONS = DB.execute( "select name from factions where name!='TOWN_NO_TYPE';" )  #get faction list
 	MASTERIES = { MASTERY_BASIC: 1, MASTERY_ADVANCED: 2, MASTERY_EXPERT: 3 }
 	RESOURCE = [ "Gold", "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem"]
 	OFFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
 	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
+	MASS_SPELLS = [	"SPELL_BLESS", "SPELL_HASTE", "SPELL_STONESKIN", "SPELL_BLOODLUST", "SPELL_DEFLECT_ARROWS",
+	"SPELL_CURSE", "SPELL_SLOW", "SPELL_DISRUPTING_RAY", "SPELL_WEAKNESS", "SPELL_PLAGUE", "SPELL_FORGETFULNESS" ]
+	EMPOWERED_SPELLS = [ "SPELL_MAGIC_ARROW", "SPELL_LIGHTNING_BOLT", "SPELL_ICE_BOLT", "SPELL_FIREBALL", "SPELL_FROST_RING", "SPELL_CHAIN_LIGHTNING",
+"SPELL_METEOR_SHOWER", "SPELL_IMPLOSION", "SPELL_ARMAGEDDON", "SPELL_STONE_SPIKES", "SPELL_CURSE", "SPELL_DISPEL", "SPELL_MAGIC_FIST", "SPELL_DEEP_FREEZE" ]
+
+	
 	@texts = Zip::File.open("text/#{@@lg}.pak") 		#load texts
 	@offense, @defense, @mana_multiplier = 1, 1, 10     #skill multipliers - Offense, Defense, Intelligence
 	@wheel_turn = 0
@@ -554,7 +559,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 			subtitle pane_t1[1], top: 43, size: 22, align: "center"
 			@bar = progress left: 81, top: 90, width: 200, height: 3
 			5.times { |i| para i+1, left: 110+i*40, top: 95 }
-			flow(left: 55, top: 120, width: 260, height: 160) { @spell_text = para "", align: "left", justify: true, size: 12 }
+			flow(left: 55, top: 120, width: 260, height: 160) { @spell_text = para "", align: "left", size: 12 }
 			pane_t1[2..5].each_with_index do |mastery, i|
 				radio(:mastery, left: 85+i*60, top: 310).click { @spell_mastery = i; spell_pane_effect };  
 				flow(left: 35+i*60, top: 292 + 36*(i%2), width: 120, height: 25 ) { para mastery, size: 12, align: "center" }
@@ -592,8 +597,9 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 			name = (reading "spells/#{summon[0]}/name.txt")
 			desc_text = (reading "spells/summon_formula.txt")
 			desc_text.scan(Regexp.union(/<.*?>/,/<.*?>/)).each { |match| desc_vars << match }
-			units = (((@sh_box.show*@sd_box.show).to_f/summon[1])*(1 + @sg_box.show)).to_i
-			[ name, units, @sh_box.show, @sd_box.show, summon[1], @sg_box.show ].each_with_index do | t, i |
+			limit = @sh_box.show*@sd_box.show > 800 ?  800 : @sh_box.show*@sd_box.show
+			units = (((limit).to_f/summon[1])*(1 + @sg_box.show)).to_i
+			[ name, units, @sh_box.show, @sd_box.show, summon[1], @sg_box.show ].each_with_index do |t,i|
 				desc_text.sub! desc_vars[i], "#{t}"
 			end
 			@spell_text.replace "#{desc_text}"
@@ -649,7 +655,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 			spell_increase = spell[2].split(",").map(&:to_f)
 			pred = (@spell_mastery == 3) ? "pred_expert" : "pred"
 			text_sp_effect = (reading "spells/#{spell[0]}/#{pred}.txt") || (reading "spells/#{spell[0]}/pred.txt") || (reading "spells/universal_prediction.txt")
-			text_sp_effect.scan(Regexp.union(/<.*?>/,/<.*?>/)).each { |match| desc_vars << match }
+			text_sp_effect.scan(Regexp.union(/<.*?>%/,/<.*?>/)).each { |match| desc_vars << match }
 			case spell[0]
 			when "SPELL_BLADE_BARRIER" then
 				special = DB.execute( "select * from spells_specials where id = '#{spell[0]}';" )
@@ -689,10 +695,10 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				end
 			else
 				@mana_f.clear do
-					para (spell[5] == "MAGIC_SCHOOL_DESTRUCTIVE" and spell[0] != "SPELL_DEEP_FREEZE" or spell[0] == "SPELL_MAGIC_FIST") ? "#{spell[3]}/#{spell[3]*2}" : spell[3]
+					mass_mana = MASS_SPELLS.include?(spell[0]) ? 4*spell[3] : (EMPOWERED_SPELLS.include?(spell[0]) ? 2*spell[3] : 0)			
+					para (mass_mana != 0 ? "#{spell[3]}/#{mass_mana}" : "#{spell[3]}")
 				end
 			end			
-			
 			case spell[0]
 			when "SPELL_DIVINE_VENGEANCE" then
 				b = spell_effect[@spell_mastery]
@@ -700,11 +706,13 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				text_sp_effect.sub! desc_vars[1], "#{trim b.round(2)}"
 				text_sp_effect.sub! desc_vars[0], "#{trim s.round(2)}"
 			when "SPELL_LAND_MINE" then
+				desc_txt = [ "Mines", "Damage" ]
 				desc_vars.each_with_index do |var, i|
 					b = spell_effect[@spell_mastery+4*(1-i)]
 					s = spell_increase[@spell_mastery+4*(1-i)]
-					text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)}"
+					text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)} /#{b.round(1)}+#{s.round(1)}*SP/"
 				end
+				
 			when "SPELL_CURSE" then
 				desc_vars.each_with_index do |var, i|
 					b = spell_effect[@spell_mastery+4*i]
@@ -713,7 +721,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 					if i == 0 then
 						cast < 0 ? cast = 0 : nil
 					end
-					text_sp_effect.sub! var, "#{trim cast}"
+					text_sp_effect.sub! var, "#{trim cast}#{["%", ""][i]} /#{b.round(0)}+#{s.round(0)}*SP/"
 				end
 			when "SPELL_ANIMATE_DEAD", "SPELL_RESURRECT" then
 				desc_vars.each_with_index do |var, i|
@@ -721,7 +729,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 					s = spell_increase[@spell_mastery+4*i]
 					cast = (b+s*sp).round(2)
 					(cast = 0 if cast < 0) if i == 1
-					text_sp_effect.sub! var, "#{trim cast}"
+					text_sp_effect.sub! var, "#{trim cast}#{["", "%"][i]} /#{b.round(0)}+#{s.round(1)}*SP/"
 				end
 			when "SPELL_DEFLECT_ARROWS", "SPELL_CELESTIAL_SHIELD", "SPELL_BLESS", "SPELL_FORGETFULNESS" then
 				desc_vars.each_with_index do |var, i|
@@ -729,7 +737,15 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 					s = spell_increase[@spell_mastery+4*i]
 					cast = (b+s*sp).round(2)
 					(cast = 100 if cast > 100) if i == 0
-					text_sp_effect.sub! var, "#{trim cast}"
+					text_sp_effect.sub! var, "#{trim cast}#{["%", " "][i]} /#{b.round(1)}+#{s}*SP/"
+				end
+			when "SPELL_DIMENSION_DOOR", "SPELL_TOWN_PORTAL", "SPELL_SUMMON_BOAT", "SPELL_SUMMON_CREATURES" then text_sp_effect = "";
+			when "SPELL_HASTE", "SPELL_SLOW", "SPELL_VAMPIRISM", "SPELL_REGENERATION", "SPELL_HYPNOTIZE", "SPELL_BERSERK" then
+				desc_vars.each_with_index do |var, i|
+					b = spell_effect[@spell_mastery+4*i]
+					s = spell_increase[@spell_mastery+4*i]
+					dmg = (b+s*sp).round(2)
+					text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)}#{["%", ""][i]} /#{b.round(1)}+#{s.round(2)}*SP/"
 				end
 			else
 				if spell[5] == "MAGIC_SCHOOL_DESTRUCTIVE" and spell[0] != "SPELL_DEEP_FREEZE" or spell[0] == "SPELL_MAGIC_FIST" then
@@ -737,14 +753,18 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 					s = spell_increase[@spell_mastery]
 					dmg = (b+s*sp).round(2)
 					text_sp_effect = (text_sp_effect + reading("spells/empowered_prediction.txt"))
-					text_sp_effect.sub! desc_vars[0], "#{trim dmg}"
+					text_sp_effect.sub! desc_vars[0], "#{trim dmg} /#{b.round(0)}+#{s.round(0)}*SP/"
 					text_sp_effect.sub! "<value=damage2>", "#{trim dmg*1.5}"
 				else
 					desc_vars.each_with_index do |var, i|
 						b = spell_effect[@spell_mastery+4*i]
 						s = spell_increase[@spell_mastery+4*i]
 						dmg = (b+s*sp).round(2)
-						text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)}"
+						if [ "SPELL_EARTHQUAKE", "SPELL_CONJURE_PHOENIX"].include?(spell[0]) then
+							text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)}"
+						else
+							text_sp_effect.sub! var, "#{trim (b+s*sp).round(2)} /#{b.round(1)}+#{s.round(2)}*SP/"
+						end
 					end
 				end
 			end
@@ -821,7 +841,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				set (image "pics/changes/necromancy.png", left: left + move, top: top + jump*2, width: @icon_size2), header: pane_t2[12], text: reading("#{t_dir}/necromancy.txt"), event: "secondary"
 				set (image "pics/changes/gating.png", left: left + move*2, top: top + jump*2, width: @icon_size2), header: pane_t2[13], text: reading("#{t_dir}/gating.txt"), event: "secondary"
 				set (image "pics/changes/occultism.png", left: left + move*3, top: top + jump*2, width: @icon_size2), header: pane_t2[15], text: reading("#{t_dir}/occultism.txt"), event: "secondary"
-				set (image "pics/changes/bloodrage.png", left: left + move*4, top: top + jump*2, width: @icon_size2), header: pane_t2[34], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
+				set (image "pics/changes/bloodrage.png", left: left + move*4, top: top + jump*2, width: @icon_size2), header: pane_t2[33], text: reading("#{t_dir}/bloodrage.txt"), event: "secondary"
 				set (image "pics/changes/bloodrage_gui.png", left: left, top: top + jump*3, width: @icon_size2), header: pane_t2[20], text: reading("#{t_dir}/bloodrage_gui.txt"), event: "secondary"
 				set( (image "pics/changes/manual.png", left: left + move, top: top + jump*3, width: @icon_size2), header: pane_t2[21], text: reading("#{t_dir}/manual.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=43030" }
 				set (image "pics/changes/textures.png", left: left + move*2, top: top + jump*3, width: @icon_size2), header: pane_t2[22], text: reading("#{t_dir}/textures.txt"), event: "secondary"
@@ -832,8 +852,8 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC11", width: @@a_width[@@res], heig
 				set( (image "pics/changes/generator.png", left: left + move*3, top: top + jump*4, width: @icon_size2), header: pane_t2[17], text: reading("#{t_dir}/generator.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41341" }
 				set (image "pics/changes/sites.png", left: left + move*4, top: top + jump*4, width: @icon_size2), header: pane_t2[18], text: reading("#{t_dir}/sites.txt"), event: "secondary"
 				set( (image "pics/changes/artifacts.png", left: left + move*5, top: top + jump*4, width: @icon_size2), header: pane_t2[19], text: reading("#{t_dir}/artifacts.txt"), event: "secondary" ) { system "start http://heroescommunity.com/viewthread.php3?TID=41528" }
-				set (image "pics/changes/gryphnchain.png", left: left, top: top + jump*5, width: @icon_size2), header: pane_t2[32], text: reading("#{t_dir}/gryphnchain.txt"), event: "secondary"
-				set (image "pics/changes/boots.png", left: left + move, top: top + jump*5, width: @icon_size2), header: pane_t2[33], text: reading("#{t_dir}/boots.txt"), event: "secondary"
+				#set (image "pics/changes/gryphnchain.png", left: left, top: top + jump*5, width: @icon_size2), header: pane_t2[32], text: reading("#{t_dir}/gryphnchain.txt"), event: "secondary"
+				set (image "pics/changes/boots.png", left: left, top: top + jump*5, width: @icon_size2), header: pane_t2[32], text: reading("#{t_dir}/boots.txt"), event: "secondary"
 			end
 		end
 	end
