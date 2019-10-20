@@ -12,7 +12,7 @@ Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might
 
 **changes.txt** - tracker of release changes.
 
-**text** - text descriptions only
+**text** - includes text packages for different languages (currently English and Russian)
 
 **pics** - images only
 
