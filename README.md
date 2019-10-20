@@ -6,7 +6,7 @@ Written on Ruby with [Shoes 3.3.7 framework](http://walkabout.mvmanila.com)
 
 Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might-magic-heroes-55/downloads/mmh55-reference-manual-rc12b)
  
-Repository files include:
+Repository files include:\n
 **main.rb** - application code
 **changes.txt** - tracker of release changes.
 **text** - text descriptions only
