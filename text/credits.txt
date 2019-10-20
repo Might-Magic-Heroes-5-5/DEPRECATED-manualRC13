@@ -1,0 +1,6 @@
+		    MMH55 Reference Manual version 1.3
+
+		Developed by:		Jordan Kostov(dredknight)
+		Design advisor:		Marina Kostova
+		Technical advisor:	Simeon Manolov
+		Russian Translation: 	Uraabk and Serega
