@@ -26,4 +26,4 @@ Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might
 
 These are all the files the manual is built from.
 
-Author: Dredknight.
+Author: dredknight
