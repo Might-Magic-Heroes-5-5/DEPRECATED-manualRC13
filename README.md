@@ -16,13 +16,11 @@ Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might
 
 **pics** - images only
 
-**settings**
-
- **-> skillwheel.db** - MMH55 game information
+ **settings->skillwheel.db** - MMH55 game information
  
- **-> app_settings.db** - keeps contants related to the app behaiour (resolution, default language)
+ **settings->app_settings.db** - keeps contants related to the app behaiour (resolution, default language)
  
- **-> fonts** - includes app fonts
+ **settings->fonts** - includes app fonts
  
 **code** - some auxiliary code (Tooltip - popup functionality; readskills.rb - used for reading text files)
 
