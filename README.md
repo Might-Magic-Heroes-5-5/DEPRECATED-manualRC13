@@ -1,11 +1,9 @@
 # Heroes of Might and Magic 5.5 manual
 
-Open source manual for the Heroes of might and magic 5.5 mod (http://www.moddb.com/mods/might-magic-heroes-55).
-Written on Ruby using Shoes 3.3.7 framework (http://walkabout.mvmanila.com)
-
-Latest app version: 1.3 with MMH55 RC12b database 
-Download: http://www.moddb.com/mods/might-magic-heroes-55/downloads/mmh55-reference-manual
-
+Open source manual for [Might & Magic: Heroes 5.5 mod] (http://www.moddb.com/mods/might-magic-heroes-55).
+Written on Ruby using [Shoes 3.3.7 framework](http://walkabout.mvmanila.com)
+Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might-magic-heroes-55/downloads/might-magic-heroes-55-rc12b)
+ 
 Repository files include:
 main.rb - application code
 changes.txt - tracker of release changes.
@@ -25,15 +23,12 @@ Author: Dredknight.
 # Release changes
 
 version 1.3
-
-######################
 added - spell pane - Spells that have mass version now include mass mana cost
 added - spell pane - Spell formula description
 removed - town pane - Note about Grypn dive + chain attack bug.
 
-version 1.2
 
-######################
+version 1.2
 added - spell pane - Spells that can be Empowered now include empowered damage and mana stats.
 added - spell pane - The 8th slot now presents magic guild summoning and formulas for each creature.
 added - spell pane - Adventure pane now includes "Town Management" skill variations.
@@ -50,8 +45,6 @@ fixed - artifact pane - axe of mountain lords description.
 fixed - artifact pane - mini artifacts values now present the current game values.
 
 version 1.1
-
-######################
 added - artifact pane - The knowledge value at the moment of forging is now shown in the forged micro artifacts in brackets.
 added - artifact pane - Artifact cost is now shown in brackets next to its name.
 added - spell pane - better curse and bless hover description as well as prediction vs spellpower.
