@@ -25,12 +25,14 @@ Author: Dredknight.
 # Release changes
 
 version 1.3
+
 ######################
 added - spell pane - Spells that have mass version now include mass mana cost
 added - spell pane - Spell formula description
 removed - town pane - Note about Grypn dive + chain attack bug.
 
 version 1.2
+
 ######################
 added - spell pane - Spells that can be Empowered now include empowered damage and mana stats.
 added - spell pane - The 8th slot now presents magic guild summoning and formulas for each creature.
@@ -48,6 +50,7 @@ fixed - artifact pane - axe of mountain lords description.
 fixed - artifact pane - mini artifacts values now present the current game values.
 
 version 1.1
+
 ######################
 added - artifact pane - The knowledge value at the moment of forging is now shown in the forged micro artifacts in brackets.
 added - artifact pane - Artifact cost is now shown in brackets next to its name.
