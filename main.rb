@@ -1,15 +1,9 @@
-require 'code/tooltip'
-require 'code/readskills'
 require 'sqlite3'
 require 'yaml'
 require 'zip'
-
-@@APP_DB = SQLite3::Database.new "settings/app_settings.db"
-@@lg=@@APP_DB.execute( "select value from settings where name='language';" )[0][0]   		#get language
-@@res=@@APP_DB.execute( "select value from settings where name='app_size';" )[0][0].to_i	#get app size
-
-@@a_width = [ 1200, 1200 ]
-@@a_height = [ 800, 750 ] 
+require 'code/GlobalVars'
+require 'code/Tooltip'
+require 'code/ReadSkills'
 
 class Array
   def same_values?
@@ -23,7 +17,7 @@ def trim num
 end
 
 def set_button hero, count, direction = "up"
-	direction == "up" ? hero+=1 : hero-=1 			##direction points if one is going up or down the list
+	direction == "up" ? hero+=1 : hero-=1 			## direction points if going up or down the list
 	( set_hero hero; set_wheel; ) if ( hero > -1 && hero < count )
 end
 
@@ -31,36 +25,19 @@ def reading f_name; begin return @texts.read(f_name) rescue nil end; end
 
 Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
 	
-	###### defining data vars #####
-	Shoes::settings.wintmo = 5
-	DB = SQLite3::Database.new "settings/skillwheel.db"
-	FACTIONS = DB.execute( "select name from factions where name!='TOWN_NO_TYPE';" )  #get faction list
-	MASTERIES = { MASTERY_BASIC: 1, MASTERY_ADVANCED: 2, MASTERY_EXPERT: 3 }
-	RESOURCE = [ "Gold", "Wood", "Ore", "Mercury", "Crystal", "Sulfur", "Gem"]
-	OFFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
-	DEFENSE_BONUS = [ 1, 1.1, 1.15, 1.2 ]
-	MASS_SPELLS = [	"SPELL_BLESS", "SPELL_HASTE", "SPELL_STONESKIN", "SPELL_BLOODLUST", "SPELL_DEFLECT_ARROWS",
-	"SPELL_CURSE", "SPELL_SLOW", "SPELL_DISRUPTING_RAY", "SPELL_WEAKNESS", "SPELL_PLAGUE", "SPELL_FORGETFULNESS" ]
-	EMPOWERED_SPELLS = [ "SPELL_MAGIC_ARROW", "SPELL_LIGHTNING_BOLT", "SPELL_ICE_BOLT", "SPELL_FIREBALL", "SPELL_FROST_RING", "SPELL_CHAIN_LIGHTNING",
-"SPELL_METEOR_SHOWER", "SPELL_IMPLOSION", "SPELL_ARMAGEDDON", "SPELL_STONE_SPIKES", "SPELL_CURSE", "SPELL_DISPEL", "SPELL_MAGIC_FIST", "SPELL_DEEP_FREEZE" ]
-
-	
-	@texts = Zip::File.open("text/#{@@lg}.pak") 		#load texts
-	@offense, @defense, @mana_multiplier = 1, 1, 10     #skill multipliers - Offense, Defense, Intelligence
-	@wheel_turn = 0
-	
-	###### defining system vars #####
+	###### defining styling #####
 	font "settings/fonts/2-vivaldi.ttf" unless Shoes::FONTS.include? "1 Vivaldi "
 	font "settings/fonts/belmt.ttf" unless Shoes::FONTS.include? "Bell MT"
 	style Shoes::Subtitle, font: "Gabriola", size: 28
 	style Shoes::Tagline, font: "Bookman Old Style", size: 16, align: "center"
-		
-	@events = { "menu" => true, "primary" => true, "secondary" => true }        ## Arrange GUI drawing slots into groups for the purpose of mass hiding
-
-	GUI_SETTINGS = [															## defines hero skill wheel circle drawing vars for different GUI resolutions
-	[60, 40, 40,  0,   0,   0,   0,  0,  0, 0,  0,  0 ],
-	[60, 40, 36, 15, -30, -50, -22, -2, 40, 0, 15,  -10 ]
-	]
+	
+	###### defining vars #####
+	@texts = Zip::File.open("text/#{@@lg}.pak") 		# load app text pack 
+	@offense = OFFENSE_BONUS[1]							# multiplier based on offense
+	@defense = DEFENSE_BONUS[1]							# multiplier based on defense
+	@mana_multiplier = 10     							# multiplier based on intelligence perk
+	@wheel_turn = 0										# enables skillwheel rotation: 0 - 12-skill-hero; 1 - 13-skill-hero
+	@events = { "menu" => true, "primary" => true, "secondary" => true }        # Arrange drawing slots into groups to filter and hide
 	@icon_size, @icon_size2, @icon_size3, @M_SL_L, @M_SL_T, @M_WH, @M_BR, @M_SR, @M_WH_L, @M_WH_R, @ARR_L, @ARR_T = GUI_SETTINGS[@@res]
 	@hovers = tooltip(reading("properties/font_type.txt").split("\r\n"), 		## set default text fonts (should be monospaced)
 		reading("properties/font_size.txt").split("\r\n").map(&:to_i),			## set default font size
