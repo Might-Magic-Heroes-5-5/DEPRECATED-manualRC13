@@ -389,27 +389,8 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], hei
 				end
 			end
 		end
-		
-		def save_list stk, del, sure
-			stk.append do
-				Dir.glob("save/**/*").reject{ |rj| File.directory?(rj) }.each_with_index do |s, i|
-					flow do
-						check { load_hero s } 
-						para "#{i+1}. #{s.split('/')[1]}"
-						button del, left: 160, top: 2, width: 60, height: 22 do
-							if confirm(sure) then
-								rm(s)
-								stk.clear;
-								save_list stk, del, sure
-							end
-						end
-					end
-				end
-			end
-		end
 
 		second.clear do
-
 			image 'pics/themes/wheel.png', left: 5+@M_WH_L, top: 2+@M_WH_R, width: 785+@M_WH; c_width, c_height, step, start_rad, begin_rad, start_rad_up = 796+@M_WH, 800+@M_WH, Math::PI/6, 0, 362+@M_BR, 58+@M_SR
 			@wheel_left = image "pics/buttons/wheel_arrow.png", left: 355 + @ARR_L, top: 290 + @ARR_T do end.hide.rotate 180
 			@wheel_right = image "pics/buttons/wheel_arrow.png", left: 410 + @ARR_L, top: 290 + @ARR_T do end.hide
@@ -432,6 +413,24 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], hei
 		end
 	end
 
+	def save_list stk, del, sure
+		stk.append do
+			Dir.glob("save/**/*").reject{ |rj| File.directory?(rj) }.each_with_index do |s, i|
+				flow do
+					check { load_hero s } 
+					para "#{i+1}. #{s.split('/')[1]}"
+					button del, left: 160, top: 2, width: 60, height: 22 do
+						if confirm(sure) then
+							rm(s)
+							stk.clear;
+							save_list stk, del, sure
+						end
+					end
+				end
+			end
+		end
+	end
+		
 	def load_hero hero
 		opts = YAML.load_file(hero)
 		@ch_class = opts['ch_class']
@@ -502,7 +501,6 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], hei
 						[ x[1], x[2], "#{x[4]} - #{x[5]}", x[7], x[6], x[9], x[12], x[3], x[15] ].each_with_index do |e, n|
 							para e, left: 10, top: 2+n*23, size: 13
 						end
-						
 						subtitle x[13], left: 168, top: 258, size: 28
 						i=0
 						creature_spells.each do |spell|
@@ -517,6 +515,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], hei
 						end
 						@cost_slot.clear { set_resources creature_price }
 					end
+					
 					@pane2.clear do
 						creature_abilities.each_with_index do |a, d|
 							para strong("#{(reading "abilities/#{a}/name.txt")}"), stroke: white, size: 14, align: "center", margin_left: 20, margin_right: 20, margin_top: 35
