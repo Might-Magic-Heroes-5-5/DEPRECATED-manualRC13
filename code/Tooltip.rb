@@ -78,7 +78,7 @@ class Click_box < Shoes::Widget
 	end
 	
 	def update(&block)
-		@box.clear { subtitle @v[:val], top: -25, align: @v[:align] || @align, stroke: @v[:strole] || @color, font: @v[:font] || @font, size: @v[:size] || @size }
+		@box.clear { subtitle @v[:val], top: -25, align: @v[:align] || @align, stroke: @v[:stroke] || @color, font: @v[:font] || @font, size: @v[:size] || @size }
 		block.call if block_given?
 		@box.click do |press|
 			app.instance_variable_get(:@hovers).hide
