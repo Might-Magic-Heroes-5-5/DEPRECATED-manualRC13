@@ -22,7 +22,11 @@ Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might
  
  **settings->fonts** - includes app fonts
  
-**code** - some auxiliary code (Tooltip - popup functionality; readskills.rb - used for reading text files)
+**code->Tooltip** - popup functionality
+
+**code->readskills** - used for reading text files
+
+**code->GlobalVars** - file sources, static arrays and vars
 
 These are all the files the manual is built from.
 
