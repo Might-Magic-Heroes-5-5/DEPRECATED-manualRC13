@@ -32,7 +32,7 @@ Shoes.app(title: "Might & Magic: Heroes 5.5 RC12b", width: @@a_width[@@res], hei
 	style Shoes::Tagline, font: "Bookman Old Style", size: 16, align: "center"
 	
 	###### defining vars #####
-	@texts = Zip::File.open("text/#{@@lg}.pak") 		# load app text pack 
+	@texts = Zip::File.open("text/#{@@lg}.pak") 		# load app text pack
 	@offense = OFFENSE_BONUS[1]							# multiplier based on offense
 	@defense = DEFENSE_BONUS[1]							# multiplier based on defense
 	@mana_multiplier = 10     							# multiplier based on intelligence perk
