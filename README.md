@@ -31,3 +31,12 @@ Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might
 These are all the files the manual is built from.
 
 Author: dredknight
+
+
+## Build instructions
+
+1. Download and install it the proper Linux/Windowx distribution from [here](https://walkabout.mvmanila.com/downloads/)
+2. Open Shoes cobler and install **Zip 2.0.2** gem as it is required to extract the manual text.
+![image](https://user-images.githubusercontent.com/12410314/70260905-f9680380-1799-11ea-8838-d578c3a00180.png)
+3. Clone the repo on your pc
+4. Launch main.rb using the framework
