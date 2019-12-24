@@ -22,6 +22,7 @@ class Tooltip < Shoes::Widget
 		if i == 0 then @w << t.length*@calc_h_size[0]; @h << @calc_h_size[1]; return;
 		else char_w, char_h = @calc_t_size[0]+1, @calc_t_size[1]-1
 		end
+		#debug("#{@calc_t_size[0]+1}, #{@calc_t_size[1]-1}")
 		wide, high = t.length*char_w, char_h
 		while not (wide/high).between?(0,3) do
 			wide=(wide*2)/3;
@@ -40,6 +41,7 @@ class Tooltip < Shoes::Widget
 		texts.each_with_index { |t,i| t != "" ? (resize t, i) : next }
 		wide = wide || @w.max; 
 		high = high || @h.inject(0, :+)
+		#debug("wide: #{wide}; high: #{high}")
 		@menu.style width: offset + wide, height: offset + high
 		@menu.move(((@move_left + @menu.width >= app.width) ? ( app.width - @menu.width ) : @move_left),
 				   ((@move_top + @menu.height >= app.height) ? ( app.height - @menu.height ) : @move_top))

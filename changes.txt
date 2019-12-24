@@ -1,7 +1,14 @@
-to be done
+version 1.4
 ######################
-wip - translation to Polish. Check fonts. Provide files for translation.
-wip - spell pane - Creature summoning text is fixed in the code.
+added - town pane - new descriptive icon "Training Grounds" that explains adjusted training feature in RC13
+added - town pane - brand new language module with the ability to refresh and get translations from our MMH55 repo on github
+changed - town pane - modified Necromancy text to fit RC13 changes
+changed - town pane - modified "Dragonblood crystals" text to fit RC13 changes
+changed - global - added database indexing for all queries. This should improve manual performance especially on PCs without SSD.
+changed - global - game database now reflects changes from RC13
+fixed - global - Popup window scaling-to-text was inaccurate which led to enourmous popus size and not much text to present.
+fixed - spell pane - Some of the "Creature summoning" text was in the code and not in the text files.
+fixed - spell pane - "Creature summoning" formula prediction was not shown for when Russian texts are used.
 
 version 1.3
 ######################
