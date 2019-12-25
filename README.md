@@ -4,7 +4,7 @@ Open source manual for [Might & Magic: Heroes 5.5 mod](http://www.moddb.com/mods
 
 Written on Ruby with [Shoes 3.3.7 framework](http://walkabout.mvmanila.com)
 
-Latest version: [1.3 with MMH55 RC12b database](https://www.moddb.com/mods/might-magic-heroes-55/downloads/mmh55-reference-manual-rc12b)
+Latest version: [1.4 with MMH55 RC13 database](https://www.moddb.com/mods/might-magic-heroes-55/downloads/mmh55-reference-manual-rc12b)
  
 ## Repository files
 
