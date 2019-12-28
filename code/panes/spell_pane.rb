@@ -176,9 +176,10 @@ def summon_text(summon=nil)
 		name = (reading "spells/#{summon[0]}/name.txt")
 		desc_text = (reading "spells/summon_formula.txt")
 		desc_text.scan(Regexp.union(/<.*?>/,/<.*?>/)).each { |match| desc_vars << match }
+		#debug("sh_box = #{@sh_box.show}; sd_box = #{@sd_box.show}; sg_box = #{@sg_box.show}")
 		limit = @sh_box.show*@sd_box.show > 600 ?  600 : @sh_box.show*@sd_box.show
-		units = Math.sqrt(((limit).to_f/summon[1])*(1 + @sg_box.show)).to_i
-		[ units, @sh_box.show, @sd_box.show, summon[1], @sg_box.show ].each_with_index do |t,i|
+		units = (Math.sqrt(limit)*(1 + @sg_box.show)/summon[1]).round
+		[ units, @sh_box.show, @sd_box.show, @sg_box.show, summon[1] ].each_with_index do |t,i|
 			desc_text.sub! desc_vars[i], "#{t}"
 		end
 		@spell_header.replace "#{name}"
