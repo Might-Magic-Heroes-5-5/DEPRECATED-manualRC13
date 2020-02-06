@@ -6,7 +6,6 @@ require 'code/language_repo'
 require 'code/Tooltip'
 require 'code/ReadSkills'
 require 'net/https'
-#require 'math'
 Dir["code/panes/*.rb"].each {|file| require file } 
 
 class Array
@@ -44,7 +43,7 @@ def get_url url
 	end
 	return response
 end
-Shoes.app(title: "Might & Magic: Heroes 5.5 RC13", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
+Shoes.app(title: "Might & Magic: Heroes 5.5 #{DB_VER}", width: @@a_width[@@res], height: @@a_height[@@res], resizable: false ) do
 	
 	###### defining styling #####
 	font "settings/fonts/2-vivaldi.ttf" unless Shoes::FONTS.include? "1 Vivaldi "

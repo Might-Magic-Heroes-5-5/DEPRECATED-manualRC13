@@ -1,5 +1,6 @@
 #Defining App globals
-@@TXT_VER = "RC13"
+DB_VER = "RC13a"
+@@TXT_VER = "RC13a"
 @@SERVER_URL = "https://raw.githubusercontent.com/Might-Magic-Heroes-5-5/Cloud-services/master/translations_list.txt"
 @@APP_DB = SQLite3::Database.new "settings/app_settings.db"									# application misc db
 @@lg=@@APP_DB.execute( "select value from settings where name='language';" )[0][0]   		# current app language

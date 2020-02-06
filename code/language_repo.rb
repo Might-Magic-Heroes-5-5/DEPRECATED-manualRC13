@@ -41,18 +41,18 @@ def show_store
 		if File.file?(@translation_list) then
 			File.readlines(@translation_list).each do |pack|
 				next if pack.start_with?("#")
-				store_packs[i] = flow left: 5, top: 5 + i*40, width: 240, height: 38 do
-					package = pack.split(',')
-					para "#{package[0]} v#{package[1]}", left: 2, top: 2, size: 12, align: "left"
-					if package[2] == @@TXT_VER then
+				package = pack.split(',')
+				if package[2] == @@TXT_VER then
+					store_packs[i] = flow left: 5, top: 5 + i*40, width: 240, height: 38 do
+						para "#{package[0]} v#{package[1]}", left: 2, top: 2, size: 12, align: "left"
 						temp, temp2 = [], 0
 						@existing_translations.each_with_index { |p, i| temp << i if p[0] == package[0] }
 						temp.each { |t| temp2 = @existing_translations[t][1].to_i if @existing_translations[t][1].to_i > temp2 }
 						temp2 >= package[1].to_i ? (name = "Installed"; status = "disabled") : (name = "Download"; status = nil)
 						dl_button contents[0].parent, "#{name}", package[3], "#{package[0]}", "#{package[1]}", status
 					end
+					i+=1
 				end
-				i+=1
 			end
 		end
 	end
