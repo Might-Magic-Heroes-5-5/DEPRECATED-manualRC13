@@ -1,3 +1,5 @@
+## THIS APPLICATION IS DEPRICATED. USE THE NEW UNITY BASED APPLICATION.
+
 # Heroes of Might and Magic 5.5 manual
 
 Open source manual for [Might & Magic: Heroes 5.5 mod](http://www.moddb.com/mods/might-magic-heroes-55).
